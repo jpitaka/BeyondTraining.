@@ -11,7 +11,7 @@ const fixtures = [
 // Estado global do jogo
 const gameState = {
   player: null,
-  phase: "creation", // "creation" | "preMatch" | "matchHighlight" | "postMatch"
+  phase: "creation", // "creation" | "preMatch" | "matchHighlight" | "betweenMatches" | "postMatch"
   minute: 0,
   scorePlayer: 0,
   scoreOpponent: 0,
@@ -1046,8 +1046,8 @@ function endMatch() {
 
     setChoices([
       {
-        label: "Seguir para o próximo jogo da época",
-        onSelect: () => startPreMatch()
+        label: "Gerir dias entre jogos",
+        onSelect: () => betweenMatches()
       },
       {
         label: "Voltar ao início (nova personagem)",
@@ -1055,6 +1055,88 @@ function endMatch() {
       }
     ]);
   }
+}
+
+function betweenMatches() {
+  gameState.phase = "betweenMatches";
+  clearStory();
+
+  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const nextMatchNumber = gamesPlayed + 1;
+
+  addStoryLine(
+    `Entre o fim do jogo ${gamesPlayed} e o início do jogo ${nextMatchNumber}, tens alguns dias para te preparar.`,
+    "narrator"
+  );
+  addStoryLine(
+    "Como queres aproveitar este período?",
+    "narrator"
+  );
+
+  setChoices([
+    {
+      label: "Treinar físico (mais força e resistência)",
+      onSelect: () => chooseBetweenMatches("physical")
+    },
+    {
+      label: "Treinar técnica (toque de bola e criatividade)",
+      onSelect: () => chooseBetweenMatches("technical")
+    },
+    {
+      label: "Descansar e recuperar",
+      onSelect: () => chooseBetweenMatches("rest")
+    }
+  ]);
+}
+
+function chooseBetweenMatches(option) {
+  const p = gameState.player;
+  const att = p.attributes;
+
+  if (option === "physical") {
+    addStoryLine(
+      "Passas os dias focado em trabalho físico: corrida, ginásio, explosão.",
+      "player"
+    );
+    att.Fisico += 1;
+    p.stamina -= 10;
+    p.morale += 1;
+  } else if (option === "technical") {
+    addStoryLine(
+      "Dedicas-te a treinar técnica: receção, passe, remate, jogadas combinadas.",
+      "player"
+    );
+    att.Tecnica += 1;
+    p.stamina -= 10;
+    p.form += 2;
+  } else if (option === "rest") {
+    addStoryLine(
+      "Aproveitas para descansar o corpo e a cabeça, dormir bem e desligar um pouco.",
+      "player"
+    );
+    p.stamina += 20;
+    p.morale += 3;
+  }
+
+  clampPlayerStatus();
+  updateStatus();
+  saveGame();
+
+  addStoryLine(
+    "Depois destes dias, aproximam-se as horas do próximo jogo.",
+    "system"
+  );
+
+  setChoices([
+    {
+      label: "Seguir para o próximo jogo",
+      onSelect: () => startPreMatch()
+    },
+    {
+      label: "Voltar ao início (nova personagem)",
+      onSelect: () => newCareer()
+    }
+  ]);
 }
 
 function endSeason() {
