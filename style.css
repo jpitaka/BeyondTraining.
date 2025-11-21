@@ -79,6 +79,17 @@ button:active {
   box-shadow: none;
 }
 
+button.secondary {
+  background: transparent;
+  color: #e5e7eb;
+  border: 1px solid #4b5563;
+  margin-left: 8px;
+}
+
+button.secondary:hover {
+  background: #111827;
+}
+
 .error-message {
   color: #f97373;
   margin-top: 6px;

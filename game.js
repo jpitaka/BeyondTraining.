@@ -56,7 +56,11 @@ const positionPresets = {
 const creationSection = document.getElementById("character-creation");
 const gameMain = document.getElementById("game");
 const startGameBtn = document.getElementById("start-game-btn");
+const continueCareerBtn = document.getElementById("continue-career-btn");
 const creationError = document.getElementById("creation-error");
+
+const SAVE_KEY = "bt_career_v1";
+
 
 const infoName = document.getElementById("info-name");
 const infoPosition = document.getElementById("info-position");
@@ -98,6 +102,14 @@ startGameBtn.addEventListener("click", () => {
   };
 
   creationError.textContent = "";
+  saveGame();      // <--- NOVO
+  initGameUI();
+  startPreMatch();
+});
+
+continueCareerBtn.addEventListener("click", () => {
+  const ok = loadGame();
+  if (!ok) return;
   initGameUI();
   startPreMatch();
 });
@@ -132,6 +144,54 @@ function updateStatus() {
   scorePlayerEl.textContent = gameState.scorePlayer;
   scoreOpponentEl.textContent = gameState.scoreOpponent;
   infoMinute.textContent = `${gameState.minute}'`;
+}
+
+function saveGame() {
+  if (!gameState.player) return;
+
+  const data = {
+    player: gameState.player
+  };
+
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error("Erro ao guardar carreira:", e);
+  }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) {
+      creationError.textContent = "Não foi encontrada nenhuma carreira guardada.";
+      return false;
+    }
+    const data = JSON.parse(raw);
+    if (!data.player) {
+      creationError.textContent = "Dados de carreira inválidos.";
+      return false;
+    }
+    gameState.player = data.player;
+    creationError.textContent = "";
+    return true;
+  } catch (e) {
+    console.error("Erro ao carregar carreira:", e);
+    creationError.textContent = "Ocorreu um erro ao carregar a carreira.";
+    return false;
+  }
+}
+
+function checkForSavedGame() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (raw) {
+    continueCareerBtn.classList.remove("hidden");
+  }
+}
+
+function newCareer() {
+  localStorage.removeItem(SAVE_KEY);
+  window.location.reload();
 }
 
 // Utilitários de log de história
@@ -862,6 +922,7 @@ function endMatch() {
 
   clampPlayerStatus();
   updateStatus();
+  saveGame();
 
   addStoryLine(resultText, "narrator");
   addStoryLine(
@@ -876,7 +937,7 @@ function endMatch() {
     },
     {
       label: "Voltar ao início (nova personagem)",
-      onSelect: () => window.location.reload()
+      onSelect: () => newCareer()
     }
   ]);
 }
@@ -888,3 +949,5 @@ function clampPlayerStatus() {
   p.morale = Math.max(0, Math.min(100, p.morale));
   p.form = Math.max(0, Math.min(100, p.form));
 }
+
+checkForSavedGame();
