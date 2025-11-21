@@ -1,4 +1,13 @@
-// Estado global do jogo
+// Mini-calendário da época
+// difficulty: 0 = fácil, 1 = médio, 2 = difícil
+const fixtures = [
+  { name: "Atlético do Bairro Velho", difficulty: 0 },
+  { name: "União da Serra Alta", difficulty: 1 },
+  { name: "AD Ribeirense", difficulty: 1 },
+  { name: "Sporting da Foz", difficulty: 2 },
+  { name: "Académico do Norte", difficulty: 2 }
+];
+
 // Estado global do jogo
 const gameState = {
   player: null,
@@ -80,6 +89,7 @@ const infoForm = document.getElementById("info-form");
 const seasonMatchEl = document.getElementById("season-match");
 const seasonRecordEl = document.getElementById("season-record");
 const seasonPointsEl = document.getElementById("season-points");
+const seasonOpponentEl = document.getElementById("season-opponent");
 
 const scorePlayerEl = document.getElementById("score-player");
 const scoreOpponentEl = document.getElementById("score-opponent");
@@ -169,6 +179,12 @@ function updateStatus() {
   updateSeasonUI();
 }
 
+function getCurrentFixture() {
+  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const index = Math.min(gamesPlayed, fixtures.length - 1);
+  return fixtures[index];
+}
+
 function updateSeasonUI() {
   const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
   const currentMatchNumber = Math.min(gamesPlayed + 1, gameState.totalMatches);
@@ -176,6 +192,13 @@ function updateSeasonUI() {
   seasonMatchEl.textContent = `${currentMatchNumber} / ${gameState.totalMatches}`;
   seasonRecordEl.textContent = `${gameState.wins}V - ${gameState.draws}E - ${gameState.losses}D`;
   seasonPointsEl.textContent = `${gameState.points}`;
+
+  const fixture = getCurrentFixture();
+  if (fixture) {
+    seasonOpponentEl.textContent = fixture.name;
+  } else {
+    seasonOpponentEl.textContent = "—";
+  }
 }
 
 function saveGame() {
@@ -281,11 +304,15 @@ function setChoices(choices) {
 // Base: atributo relevante (1-5) + d12 contra dificuldade
 function rollSkill(baseValue, difficulty) {
   const roll = Math.floor(Math.random() * 12) + 1; // 1-12
+  const fixture = getCurrentFixture();
+  const difficultyMod = fixture ? fixture.difficulty : 0;
+  const target = difficulty + difficultyMod;
+
   const total = baseValue + roll;
 
-  if (total >= difficulty + 6) return { outcome: "greatSuccess", roll, total };
-  if (total >= difficulty) return { outcome: "success", roll, total };
-  if (total >= difficulty - 4) return { outcome: "fail", roll, total };
+  if (total >= target + 6) return { outcome: "greatSuccess", roll, total };
+  if (total >= target) return { outcome: "success", roll, total };
+  if (total >= target - 4) return { outcome: "fail", roll, total };
   return { outcome: "badFail", roll, total };
 }
 
@@ -304,6 +331,7 @@ function startPreMatch() {
 
   const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
   const matchNumber = gamesPlayed + 1;
+  const fixture = getCurrentFixture();
 
   if (matchNumber === 1) {
     addStoryLine(
@@ -313,6 +341,13 @@ function startPreMatch() {
   } else {
     addStoryLine(
       `Estamos no jogo ${matchNumber} de ${gameState.totalMatches} desta época.`,
+      "narrator"
+    );
+  }
+
+  if (fixture) {
+    addStoryLine(
+      `O adversário de hoje é o ${fixture.name}.`,
       "narrator"
     );
   }
