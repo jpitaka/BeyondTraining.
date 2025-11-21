@@ -1,11 +1,19 @@
 // Estado global do jogo
+// Estado global do jogo
 const gameState = {
   player: null,
   phase: "creation", // "creation" | "preMatch" | "matchHighlight" | "postMatch"
   minute: 0,
   scorePlayer: 0,
   scoreOpponent: 0,
-  highlightIndex: 0 // para controlar os lances do jogo
+  highlightIndex: 0,
+
+  // dados da época
+  totalMatches: 5, // mini-época de 5 jogos
+  wins: 0,
+  draws: 0,
+  losses: 0,
+  points: 0
 };
 
 // Valores base por posição
@@ -69,6 +77,10 @@ const infoStamina = document.getElementById("info-stamina");
 const infoMorale = document.getElementById("info-morale");
 const infoForm = document.getElementById("info-form");
 
+const seasonMatchEl = document.getElementById("season-match");
+const seasonRecordEl = document.getElementById("season-record");
+const seasonPointsEl = document.getElementById("season-points");
+
 const scorePlayerEl = document.getElementById("score-player");
 const scoreOpponentEl = document.getElementById("score-opponent");
 const infoMinute = document.getElementById("info-minute");
@@ -101,8 +113,15 @@ startGameBtn.addEventListener("click", () => {
     form: 50
   };
 
+  // reset da época ao começar nova carreira
+  gameState.totalMatches = 5;
+  gameState.wins = 0;
+  gameState.draws = 0;
+  gameState.losses = 0;
+  gameState.points = 0;
+
   creationError.textContent = "";
-  saveGame();      // <--- NOVO
+  saveGame();
   initGameUI();
   startPreMatch();
 });
@@ -137,20 +156,40 @@ function initGameUI() {
 // Atualizar estado (stamina, moral, forma, resultado, minuto)
 function updateStatus() {
   const p = gameState.player;
-  infoStamina.textContent = `${p.stamina}`;
-  infoMorale.textContent = `${p.morale}`;
-  infoForm.textContent = `${p.form}`;
+  if (p) {
+    infoStamina.textContent = `${p.stamina}`;
+    infoMorale.textContent = `${p.morale}`;
+    infoForm.textContent = `${p.form}`;
+  }
 
   scorePlayerEl.textContent = gameState.scorePlayer;
   scoreOpponentEl.textContent = gameState.scoreOpponent;
   infoMinute.textContent = `${gameState.minute}'`;
+
+  updateSeasonUI();
+}
+
+function updateSeasonUI() {
+  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const currentMatchNumber = Math.min(gamesPlayed + 1, gameState.totalMatches);
+
+  seasonMatchEl.textContent = `${currentMatchNumber} / ${gameState.totalMatches}`;
+  seasonRecordEl.textContent = `${gameState.wins}V - ${gameState.draws}E - ${gameState.losses}D`;
+  seasonPointsEl.textContent = `${gameState.points}`;
 }
 
 function saveGame() {
   if (!gameState.player) return;
 
   const data = {
-    player: gameState.player
+    player: gameState.player,
+    career: {
+      totalMatches: gameState.totalMatches,
+      wins: gameState.wins,
+      draws: gameState.draws,
+      losses: gameState.losses,
+      points: gameState.points
+    }
   };
 
   try {
@@ -172,7 +211,24 @@ function loadGame() {
       creationError.textContent = "Dados de carreira inválidos.";
       return false;
     }
+
     gameState.player = data.player;
+
+    if (data.career) {
+      gameState.totalMatches = data.career.totalMatches ?? 5;
+      gameState.wins = data.career.wins ?? 0;
+      gameState.draws = data.career.draws ?? 0;
+      gameState.losses = data.career.losses ?? 0;
+      gameState.points = data.career.points ?? 0;
+    } else {
+      // compatibilidade com saves antigos
+      gameState.totalMatches = 5;
+      gameState.wins = 0;
+      gameState.draws = 0;
+      gameState.losses = 0;
+      gameState.points = 0;
+    }
+
     creationError.textContent = "";
     return true;
   } catch (e) {
@@ -246,12 +302,23 @@ function startPreMatch() {
   updateStatus();
   clearStory();
 
+  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const matchNumber = gamesPlayed + 1;
+
+  if (matchNumber === 1) {
+    addStoryLine(
+      "É o início da tua carreira profissional. Hoje é o teu primeiro jogo oficial pelo clube.",
+      "narrator"
+    );
+  } else {
+    addStoryLine(
+      `Estamos no jogo ${matchNumber} de ${gameState.totalMatches} desta época.`,
+      "narrator"
+    );
+  }
+
   addStoryLine(
-    `É o início da tua carreira profissional. Hoje é o teu primeiro jogo oficial pelo clube.`,
-    "narrator"
-  );
-  addStoryLine(
-    `O treinador reúne a equipa no balneário antes do jogo. Olha para ti com um leve sorriso.`,
+    "O treinador reúne a equipa no balneário antes do jogo. Olha para ti com um leve sorriso.",
     "narrator"
   );
 
@@ -900,43 +967,79 @@ function resolveShotReaction(result) {
 function endMatch() {
   gameState.phase = "postMatch";
   gameState.minute = 90;
-  updateStatus();
 
   const p = gameState.player;
-  addStoryLine("O árbitro apita para o final do jogo.", "narrator");
-
   let resultText;
+
   if (gameState.scorePlayer > gameState.scoreOpponent) {
-    resultText = "Vitória no teu jogo de estreia!";
+    resultText = "Vitória neste jogo!";
     p.form += 6;
     p.morale += 8;
+    gameState.wins += 1;
+    gameState.points += 3;
   } else if (gameState.scorePlayer < gameState.scoreOpponent) {
     resultText = "Derrota dura, mas faz parte da aprendizagem.";
     p.form -= 4;
     p.morale -= 6;
+    gameState.losses += 1;
   } else {
-    resultText = "Empate. Não é mau para estreia, mas queres mais.";
+    resultText = "Empate. Não é mau, mas queres mais.";
     p.form += 1;
     p.morale += 1;
+    gameState.draws += 1;
+    gameState.points += 1;
   }
 
   clampPlayerStatus();
   updateStatus();
   saveGame();
 
+  addStoryLine("O árbitro apita para o final do jogo.", "narrator");
   addStoryLine(resultText, "narrator");
+
+  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const isSeasonOver = gamesPlayed >= gameState.totalMatches;
+
+  if (isSeasonOver) {
+    endSeason();
+  } else {
+    addStoryLine(
+      `Já levas ${gamesPlayed} jogos nesta época. Faltam ${gameState.totalMatches - gamesPlayed} jogos.`,
+      "system"
+    );
+
+    setChoices([
+      {
+        label: "Seguir para o próximo jogo da época",
+        onSelect: () => startPreMatch()
+      },
+      {
+        label: "Voltar ao início (nova personagem)",
+        onSelect: () => newCareer()
+      }
+    ]);
+  }
+}
+
+function endSeason() {
+  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+
   addStoryLine(
-    "Esta foi apenas a primeira página da tua carreira. A partir daqui, podes construir uma lenda.",
+    `A época chegou ao fim. Jogaste ${gamesPlayed} jogos: ${gameState.wins} vitórias, ${gameState.draws} empates e ${gameState.losses} derrotas.`,
+    "system"
+  );
+  addStoryLine(
+    `Terminaste com ${gameState.points} pontos e forma atual de ${gameState.player.form}.`,
+    "system"
+  );
+  addStoryLine(
+    "Podes começar uma nova carreira do zero e tentar fazer ainda melhor.",
     "system"
   );
 
   setChoices([
     {
-      label: "Jogar outro jogo (reiniciar episódio)",
-      onSelect: () => startPreMatch()
-    },
-    {
-      label: "Voltar ao início (nova personagem)",
+      label: "Começar nova carreira",
       onSelect: () => newCareer()
     }
   ]);
