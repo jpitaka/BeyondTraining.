@@ -616,6 +616,7 @@ function handleHighlight0(action) {
   }
 
   gameState.highlightIndex++;
+  proceedHighlight();
 }
 
 /* Destaque 1 - meio da segunda parte */
