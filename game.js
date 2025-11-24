@@ -26,7 +26,15 @@ const gameState = {
   wins: 0,
   draws: 0,
   losses: 0,
-  points: 0
+  points: 0,
+
+  // estatísticas do jogador
+  playerStats: {
+    games: 0,
+    goals: 0,
+    assists: 0,
+    cleanSheets: 0
+  }
 };
 
 const positionPresets = {
@@ -95,6 +103,11 @@ const seasonMatchEl = document.getElementById("season-match");
 const seasonRecordEl = document.getElementById("season-record");
 const seasonPointsEl = document.getElementById("season-points");
 const seasonOpponentEl = document.getElementById("season-opponent");
+
+const statGamesEl = document.getElementById("stat-games");
+const statGoalsEl = document.getElementById("stat-goals");
+const statAssistsEl = document.getElementById("stat-assists");
+const statCleanSheetsEl = document.getElementById("stat-cleansheets");
 
 const scorePlayerEl = document.getElementById("score-player");
 const scoreOpponentEl = document.getElementById("score-opponent");
@@ -170,6 +183,15 @@ function updateStatus() {
   infoMinute.textContent = `${gameState.minute}'`;
 
   updateSeasonUI();
+  updateStatsUI();
+}
+
+function updateStatsUI() {
+  const s = gameState.playerStats;
+  statGamesEl.textContent = s.games;
+  statGoalsEl.textContent = s.goals;
+  statAssistsEl.textContent = s.assists;
+  statCleanSheetsEl.textContent = s.cleanSheets;
 }
 
 function clearStory() {
@@ -241,7 +263,8 @@ function saveGame() {
       draws: gameState.draws,
       losses: gameState.losses,
       points: gameState.points
-    }
+    },
+    stats: gameState.playerStats
   };
 
   try {
@@ -278,6 +301,22 @@ function loadGame() {
       gameState.draws = 0;
       gameState.losses = 0;
       gameState.points = 0;
+    }
+
+    if (data.stats) {
+      gameState.playerStats = {
+        games: data.stats.games ?? 0,
+        goals: data.stats.goals ?? 0,
+        assists: data.stats.assists ?? 0,
+        cleanSheets: data.stats.cleanSheets ?? 0
+      };
+    } else {
+      gameState.playerStats = {
+        games: 0,
+        goals: 0,
+        assists: 0,
+        cleanSheets: 0
+      };
     }
 
     creationError.textContent = "";
@@ -335,6 +374,13 @@ startGameBtn.addEventListener("click", () => {
   gameState.draws = 0;
   gameState.losses = 0;
   gameState.points = 0;
+
+  gameState.playerStats = {
+    games: 0,
+    goals: 0,
+    assists: 0,
+    cleanSheets: 0
+  };
 
   creationError.textContent = "";
   saveGame();
@@ -661,10 +707,11 @@ function handleHighlight1(action) {
     const result = rollSkill(base, 11);
     if (result.outcome === "greatSuccess") {
       addStoryLine(
-        "Recebes, driblas um adversário e crias uma ocasião claríssima. A equipa sente que pode ganhar.",
+        "Recebes, driblas um adversário e finalizas para golo. A equipa sente que pode ganhar.",
         "narrator"
       );
       gameState.scorePlayer++;
+      gameState.playerStats.goals += 1;
       p.morale += 8;
       p.form += 6;
     } else if (result.outcome === "success") {
@@ -738,6 +785,7 @@ function handleHighlight2(action) {
         "narrator"
       );
       gameState.scorePlayer++;
+      gameState.playerStats.goals += 1;
       p.morale += 10;
       p.form += 8;
     } else if (result.outcome === "success") {
@@ -804,6 +852,7 @@ function resolveAttackResult(result) {
       "narrator"
     );
     gameState.scorePlayer++;
+    gameState.playerStats.goals += 1;
     p.morale += 6;
     p.form += 4;
   } else if (result.outcome === "success") {
@@ -886,6 +935,7 @@ function resolveThroughBall(result) {
       "narrator"
     );
     gameState.scorePlayer++;
+    gameState.playerStats.assists += 1;
     p.morale += 6;
     p.form += 4;
   } else if (result.outcome === "success") {
@@ -1055,6 +1105,15 @@ function endMatch() {
     p.morale += 1;
     gameState.draws += 1;
     gameState.points += 1;
+  }
+
+  // atualizar estatísticas de jogos e balizas invioladas
+  gameState.playerStats.games += 1;
+  if (
+    gameState.player.positionKey === "Goalkeeper" &&
+    gameState.scoreOpponent === 0
+  ) {
+    gameState.playerStats.cleanSheets += 1;
   }
 
   clampPlayerStatus();
