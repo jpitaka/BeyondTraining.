@@ -261,6 +261,54 @@ function clampPlayerStatus() {
   p.form = Math.max(0, Math.min(100, p.form));
 }
 
+function applyAttributeGrowth(finalRating) {
+  const p = gameState.player;
+  if (!p || !p.attributes) return [];
+
+  const att = p.attributes;
+
+  // Quantos pontos de evolução ganha neste jogo
+  let points = 0;
+  if (finalRating >= 9) {
+    points = 2;
+  } else if (finalRating >= 8) {
+    points = 1;
+  } else {
+    return []; // nota normal/baixa, não há evolução visível
+  }
+
+  // Atributos mais relevantes por posição
+  let pool;
+  switch (p.positionKey) {
+    case "Forward":
+      pool = ["Tecnica", "Fisico", "Mental"];
+      break;
+    case "Midfielder":
+      pool = ["Tecnica", "Tactica", "Mental"];
+      break;
+    case "Defender":
+      pool = ["Fisico", "Tactica", "Mental"];
+      break;
+    case "Goalkeeper":
+      pool = ["Mental", "Tactica", "Tecnica", "Fisico"];
+      break;
+    default:
+      pool = ["Tecnica", "Fisico", "Tactica", "Mental", "Social"];
+  }
+
+  const improved = [];
+  const available = [...pool];
+
+  for (let i = 0; i < points && available.length > 0; i++) {
+    const idx = Math.floor(Math.random() * available.length);
+    const attrName = available.splice(idx, 1)[0];
+    att[attrName] = (att[attrName] ?? 1) + 1;
+    improved.push(attrName);
+  }
+
+  return improved;
+}
+
 function applyRatingChange(delta) {
   if (gameState.currentRating == null) {
     gameState.currentRating = 6; // base neutra
@@ -1179,11 +1227,12 @@ function endMatch() {
   }
 
   // nota final do jogo (1 casa decimal)
-  const finalRating = Math.max(
-    1,
-    Math.min(10, gameState.currentRating)
-  );
-  gameState.playerStats.lastRating = Math.round(finalRating * 10) / 10;
+  const clampedRating = Math.max(1, Math.min(10, gameState.currentRating));
+  const finalRating = Math.round(clampedRating * 10) / 10;
+  gameState.playerStats.lastRating = finalRating;
+
+  // evolução de atributos com base na nota
+  const improvedAttrs = applyAttributeGrowth(finalRating);
 
   // atualizar estatísticas de jogos e balizas invioladas
   gameState.playerStats.games += 1;
@@ -1197,6 +1246,16 @@ function endMatch() {
   clampPlayerStatus();
   updateStatus();
   saveGame();
+
+  addStoryLine(`A tua nota neste jogo foi ${finalRating.toFixed(1)}.`, "system");
+
+  if (improvedAttrs && improvedAttrs.length > 0) {
+    const lista = improvedAttrs.join(", ");
+    addStoryLine(
+      `À medida que os jogos passam, sentes-te a evoluir em: ${lista}.`,
+      "system"
+    );
+  }
 
   addStoryLine("O árbitro apita para o final do jogo.", "narrator");
   addStoryLine(resultText, "narrator");
