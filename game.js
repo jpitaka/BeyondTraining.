@@ -1,3 +1,7 @@
+// ============================
+// Configuração base
+// ============================
+
 // Mini-calendário da época
 // difficulty: 0 = fácil, 1 = médio, 2 = difícil
 const fixtures = [
@@ -18,14 +22,13 @@ const gameState = {
   highlightIndex: 0,
 
   // dados da época
-  totalMatches: 5, // mini-época de 5 jogos
+  totalMatches: fixtures.length,
   wins: 0,
   draws: 0,
   losses: 0,
   points: 0
 };
 
-// Valores base por posição
 const positionPresets = {
   Forward: {
     label: "Avançado",
@@ -69,15 +72,17 @@ const positionPresets = {
   }
 };
 
+const SAVE_KEY = "bt_career_v1";
+
+// ============================
 // Referências ao DOM
+// ============================
+
 const creationSection = document.getElementById("character-creation");
 const gameMain = document.getElementById("game");
 const startGameBtn = document.getElementById("start-game-btn");
 const continueCareerBtn = document.getElementById("continue-career-btn");
 const creationError = document.getElementById("creation-error");
-
-const SAVE_KEY = "bt_career_v1";
-
 
 const infoName = document.getElementById("info-name");
 const infoPosition = document.getElementById("info-position");
@@ -98,62 +103,34 @@ const infoMinute = document.getElementById("info-minute");
 const storyLog = document.getElementById("story-log");
 const choicesContainer = document.getElementById("choices");
 
-// Criação do jogador
-startGameBtn.addEventListener("click", () => {
-  const nameInput = document.getElementById("player-name");
-  const positionSelect = document.getElementById("player-position");
+// ============================
+// Utilitários de época / fixtures
+// ============================
 
-  const name = nameInput.value.trim();
-  const positionKey = positionSelect.value;
+function getGamesPlayed() {
+  return gameState.wins + gameState.draws + gameState.losses;
+}
 
-  if (!name || !positionKey) {
-    creationError.textContent = "Preenche o nome e escolhe uma posição.";
-    return;
-  }
+function getCurrentFixture() {
+  const gamesPlayed = getGamesPlayed();
+  const index = Math.min(gamesPlayed, fixtures.length - 1);
+  return fixtures[index];
+}
 
-  const preset = positionPresets[positionKey];
+// ============================
+// UI geral
+// ============================
 
-  gameState.player = {
-    name,
-    positionKey,
-    positionLabel: preset.label,
-    attributes: { ...preset.attributes },
-    stamina: 100,
-    morale: 60,
-    form: 50
-  };
-
-  // reset da época ao começar nova carreira
-  gameState.totalMatches = 5;
-  gameState.wins = 0;
-  gameState.draws = 0;
-  gameState.losses = 0;
-  gameState.points = 0;
-
-  creationError.textContent = "";
-  saveGame();
-  initGameUI();
-  startPreMatch();
-});
-
-continueCareerBtn.addEventListener("click", () => {
-  const ok = loadGame();
-  if (!ok) return;
-  initGameUI();
-  startPreMatch();
-});
-
-// Inicializar painel do jogador
 function initGameUI() {
   creationSection.classList.add("hidden");
   gameMain.classList.remove("hidden");
 
-  infoName.textContent = gameState.player.name;
-  infoPosition.textContent = gameState.player.positionLabel;
+  const p = gameState.player;
+  infoName.textContent = p.name;
+  infoPosition.textContent = p.positionLabel;
 
-  // Lista de atributos
   attributesList.innerHTML = "";
-  Object.entries(gameState.player.attributes).forEach(([attr, value]) => {
+  Object.entries(p.attributes).forEach(([attr, value]) => {
     const li = document.createElement("li");
     li.innerHTML = `<span>${attr}</span><span>${value}</span>`;
     attributesList.appendChild(li);
@@ -161,6 +138,22 @@ function initGameUI() {
 
   updateStatus();
   clearStory();
+}
+
+function updateSeasonUI() {
+  const gamesPlayed = getGamesPlayed();
+  const currentMatchNumber = Math.min(gamesPlayed + 1, gameState.totalMatches);
+
+  seasonMatchEl.textContent = `${currentMatchNumber} / ${gameState.totalMatches}`;
+  seasonRecordEl.textContent = `${gameState.wins}V - ${gameState.draws}E - ${gameState.losses}D`;
+  seasonPointsEl.textContent = `${gameState.points}`;
+
+  const fixture = getCurrentFixture();
+  if (fixture) {
+    seasonOpponentEl.textContent = fixture.name;
+  } else {
+    seasonOpponentEl.textContent = "—";
+  }
 }
 
 // Atualizar estado (stamina, moral, forma, resultado, minuto)
@@ -179,27 +172,63 @@ function updateStatus() {
   updateSeasonUI();
 }
 
-function getCurrentFixture() {
-  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
-  const index = Math.min(gamesPlayed, fixtures.length - 1);
-  return fixtures[index];
+function clearStory() {
+  storyLog.innerHTML = "";
 }
 
-function updateSeasonUI() {
-  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
-  const currentMatchNumber = Math.min(gamesPlayed + 1, gameState.totalMatches);
+function addStoryLine(text, type = "narrator") {
+  const div = document.createElement("div");
+  div.classList.add("story-entry", type);
+  div.textContent = text;
+  storyLog.appendChild(div);
+  storyLog.scrollTop = storyLog.scrollHeight;
+}
 
-  seasonMatchEl.textContent = `${currentMatchNumber} / ${gameState.totalMatches}`;
-  seasonRecordEl.textContent = `${gameState.wins}V - ${gameState.draws}E - ${gameState.losses}D`;
-  seasonPointsEl.textContent = `${gameState.points}`;
+function setChoices(choices) {
+  choicesContainer.innerHTML = "";
+  choices.forEach((choice) => {
+    const btn = document.createElement("button");
+    btn.textContent = choice.label;
+    if (choice.secondary) {
+      btn.classList.add("secondary");
+    }
+    btn.addEventListener("click", () => {
+      choice.onSelect();
+    });
+    choicesContainer.appendChild(btn);
+  });
+}
 
+// ============================
+// Rolls / estado
+// ============================
+
+function rollSkill(baseValue, difficulty) {
+  const roll = Math.floor(Math.random() * 12) + 1; // 1-12
   const fixture = getCurrentFixture();
-  if (fixture) {
-    seasonOpponentEl.textContent = fixture.name;
-  } else {
-    seasonOpponentEl.textContent = "—";
-  }
+  const difficultyMod = fixture ? fixture.difficulty : 0;
+  const target = difficulty + difficultyMod;
+
+  const total = baseValue + roll;
+
+  if (total >= target + 6) return { outcome: "greatSuccess", roll, total };
+  if (total >= target) return { outcome: "success", roll, total };
+  if (total >= target - 4) return { outcome: "fail", roll, total };
+  return { outcome: "badFail", roll, total };
 }
+
+function clampPlayerStatus() {
+  const p = gameState.player;
+  if (!p) return;
+
+  p.stamina = Math.max(0, Math.min(100, p.stamina));
+  p.morale = Math.max(0, Math.min(100, p.morale));
+  p.form = Math.max(0, Math.min(100, p.form));
+}
+
+// ============================
+// Guardar / carregar carreira
+// ============================
 
 function saveGame() {
   if (!gameState.player) return;
@@ -238,14 +267,13 @@ function loadGame() {
     gameState.player = data.player;
 
     if (data.career) {
-      gameState.totalMatches = data.career.totalMatches ?? 5;
+      gameState.totalMatches = data.career.totalMatches ?? fixtures.length;
       gameState.wins = data.career.wins ?? 0;
       gameState.draws = data.career.draws ?? 0;
       gameState.losses = data.career.losses ?? 0;
       gameState.points = data.career.points ?? 0;
     } else {
-      // compatibilidade com saves antigos
-      gameState.totalMatches = 5;
+      gameState.totalMatches = fixtures.length;
       gameState.wins = 0;
       gameState.draws = 0;
       gameState.losses = 0;
@@ -273,52 +301,57 @@ function newCareer() {
   window.location.reload();
 }
 
-// Utilitários de log de história
-function clearStory() {
-  storyLog.innerHTML = "";
-}
+// ============================
+// Fluxo: criação de jogador
+// ============================
 
-function addStoryLine(text, type = "narrator") {
-  const div = document.createElement("div");
-  div.classList.add("story-entry", type);
-  div.textContent = text;
-  storyLog.appendChild(div);
-  storyLog.scrollTop = storyLog.scrollHeight;
-}
+startGameBtn.addEventListener("click", () => {
+  const nameInput = document.getElementById("player-name");
+  const positionSelect = document.getElementById("player-position");
 
-// Gerar escolhas (botões)
-function setChoices(choices) {
-  choicesContainer.innerHTML = "";
+  const name = nameInput.value.trim();
+  const positionKey = positionSelect.value;
 
-  choices.forEach((choice) => {
-    const btn = document.createElement("button");
-    btn.textContent = choice.label;
-    btn.addEventListener("click", () => {
-      choice.onSelect();
-    });
-    choicesContainer.appendChild(btn);
-  });
-}
+  if (!name || !positionKey) {
+    creationError.textContent = "Preenche o nome e escolhe uma posição.";
+    return;
+  }
 
-// Roll de skill genérico
-// Base: atributo relevante (1-5) + d12 contra dificuldade
-function rollSkill(baseValue, difficulty) {
-  const roll = Math.floor(Math.random() * 12) + 1; // 1-12
-  const fixture = getCurrentFixture();
-  const difficultyMod = fixture ? fixture.difficulty : 0;
-  const target = difficulty + difficultyMod;
+  const preset = positionPresets[positionKey];
 
-  const total = baseValue + roll;
+  gameState.player = {
+    name,
+    positionKey,
+    positionLabel: preset.label,
+    attributes: { ...preset.attributes },
+    stamina: 100,
+    morale: 60,
+    form: 50
+  };
 
-  if (total >= target + 6) return { outcome: "greatSuccess", roll, total };
-  if (total >= target) return { outcome: "success", roll, total };
-  if (total >= target - 4) return { outcome: "fail", roll, total };
-  return { outcome: "badFail", roll, total };
-}
+  // reset época
+  gameState.totalMatches = fixtures.length;
+  gameState.wins = 0;
+  gameState.draws = 0;
+  gameState.losses = 0;
+  gameState.points = 0;
 
-/* =====================
-   FASE 1: Pré-jogo
-===================== */
+  creationError.textContent = "";
+  saveGame();
+  initGameUI();
+  startPreMatch();
+});
+
+continueCareerBtn.addEventListener("click", () => {
+  const ok = loadGame();
+  if (!ok) return;
+  initGameUI();
+  startPreMatch();
+});
+
+// ============================
+// Pré-jogo
+// ============================
 
 function startPreMatch() {
   gameState.phase = "preMatch";
@@ -329,7 +362,7 @@ function startPreMatch() {
   updateStatus();
   clearStory();
 
-  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const gamesPlayed = getGamesPlayed();
   const matchNumber = gamesPlayed + 1;
   const fixture = getCurrentFixture();
 
@@ -346,10 +379,7 @@ function startPreMatch() {
   }
 
   if (fixture) {
-    addStoryLine(
-      `O adversário de hoje é o ${fixture.name}.`,
-      "narrator"
-    );
+    addStoryLine(`O adversário de hoje é o ${fixture.name}.`, "narrator");
   }
 
   addStoryLine(
@@ -389,8 +419,8 @@ function handlePreMatchChoice(option) {
       "player"
     );
     const social = p.attributes.Social;
-    const roll = rollSkill(social, 8);
-    if (roll.outcome === "greatSuccess" || roll.outcome === "success") {
+    const result = rollSkill(social, 8);
+    if (result.outcome === "greatSuccess" || result.outcome === "success") {
       addStoryLine(
         "O balneário explode em gritos de motivação. O treinador parece satisfeito.",
         "narrator"
@@ -413,17 +443,14 @@ function handlePreMatchChoice(option) {
     p.form -= 2;
   }
 
-  // Limites simples
-  p.morale = Math.max(0, Math.min(100, p.morale));
-  p.form = Math.max(0, Math.min(100, p.form));
-
+  clampPlayerStatus();
   updateStatus();
   startMatch();
 }
 
-/* =====================
-   FASE 2: Jogo (3 destaques)
-===================== */
+// ============================
+// Jogo: destaques
+// ============================
 
 function startMatch() {
   gameState.phase = "matchHighlight";
@@ -544,7 +571,6 @@ function proceedHighlight() {
   }
 }
 
-/* Destaque 0 - diferente por posição */
 function handleHighlight0(action) {
   const p = gameState.player;
   const att = p.attributes;
@@ -615,11 +641,13 @@ function handleHighlight0(action) {
     }
   }
 
+  clampPlayerStatus();
+  updateStatus();
+
   gameState.highlightIndex++;
   proceedHighlight();
 }
 
-/* Destaque 1 - meio da segunda parte */
 function handleHighlight1(action) {
   const p = gameState.player;
   const att = p.attributes;
@@ -692,7 +720,6 @@ function handleHighlight1(action) {
   proceedHighlight();
 }
 
-/* Destaque 2 - minutos finais */
 function handleHighlight2(action) {
   const p = gameState.player;
   const att = p.attributes;
@@ -764,7 +791,9 @@ function handleHighlight2(action) {
   proceedHighlight();
 }
 
-/* Pequenas funções de resolução de lances específicos */
+// ============================
+// Resolução de lances auxiliares
+// ============================
 
 function resolveAttackResult(result) {
   const p = gameState.player;
@@ -998,7 +1027,9 @@ function resolveShotReaction(result) {
   updateStatus();
 }
 
-/* Final do jogo */
+// ============================
+// Fim do jogo + entrevista + entre jogos
+// ============================
 
 function endMatch() {
   gameState.phase = "postMatch";
@@ -1033,8 +1064,7 @@ function endMatch() {
   addStoryLine("O árbitro apita para o final do jogo.", "narrator");
   addStoryLine(resultText, "narrator");
 
-
-  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const gamesPlayed = getGamesPlayed();
   const isSeasonOver = gamesPlayed >= gameState.totalMatches;
 
   if (isSeasonOver) {
@@ -1045,7 +1075,7 @@ function endMatch() {
 }
 
 function postMatchPress() {
-  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const gamesPlayed = getGamesPlayed();
   const remaining = Math.max(gameState.totalMatches - gamesPlayed, 0);
 
   addStoryLine(
@@ -1081,8 +1111,8 @@ function postMatchPress() {
 function handlePressChoice(option) {
   const p = gameState.player;
   const att = p.attributes;
-  const social = att.Social ?? 1;
-  const mental = att.Mental ?? 1;
+  const social = att.Social !== undefined ? att.Social : 1;
+  const mental = att.Mental !== undefined ? att.Mental : 1;
 
   if (option === "humble") {
     addStoryLine(
@@ -1181,6 +1211,7 @@ function handlePressChoice(option) {
     },
     {
       label: "Voltar ao início (nova personagem)",
+      secondary: true,
       onSelect: () => newCareer()
     }
   ]);
@@ -1190,17 +1221,14 @@ function betweenMatches() {
   gameState.phase = "betweenMatches";
   clearStory();
 
-  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const gamesPlayed = getGamesPlayed();
   const nextMatchNumber = gamesPlayed + 1;
 
   addStoryLine(
     `Entre o fim do jogo ${gamesPlayed} e o início do jogo ${nextMatchNumber}, tens alguns dias para te preparar.`,
     "narrator"
   );
-  addStoryLine(
-    "Como queres aproveitar este período?",
-    "narrator"
-  );
+  addStoryLine("Como queres aproveitar este período?", "narrator");
 
   setChoices([
     {
@@ -1263,13 +1291,14 @@ function chooseBetweenMatches(option) {
     },
     {
       label: "Voltar ao início (nova personagem)",
+      secondary: true,
       onSelect: () => newCareer()
     }
   ]);
 }
 
 function endSeason() {
-  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const gamesPlayed = getGamesPlayed();
 
   addStoryLine(
     `A época chegou ao fim. Jogaste ${gamesPlayed} jogos: ${gameState.wins} vitórias, ${gameState.draws} empates e ${gameState.losses} derrotas.`,
@@ -1292,12 +1321,8 @@ function endSeason() {
   ]);
 }
 
-/* Garantir que valores não passam limites tolos */
-function clampPlayerStatus() {
-  const p = gameState.player;
-  p.stamina = Math.max(0, Math.min(100, p.stamina));
-  p.morale = Math.max(0, Math.min(100, p.morale));
-  p.form = Math.max(0, Math.min(100, p.form));
-}
+// ============================
+// Arranque
+// ============================
 
 checkForSavedGame();
