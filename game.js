@@ -37,7 +37,8 @@ const gameState = {
     goals: 0,
     assists: 0,
     cleanSheets: 0,
-    lastRating: null
+    lastRating: null,
+    ratingSum: 0
   }
 };
 
@@ -113,6 +114,7 @@ const statGoalsEl = document.getElementById("stat-goals");
 const statAssistsEl = document.getElementById("stat-assists");
 const statCleanSheetsEl = document.getElementById("stat-cleansheets");
 const statLastRatingEl = document.getElementById("stat-last-rating");
+const statAvgRatingEl = document.getElementById("stat-avg-rating");
 
 const scorePlayerEl = document.getElementById("score-player");
 const scoreOpponentEl = document.getElementById("score-opponent");
@@ -204,6 +206,13 @@ function updateStatsUI() {
     statLastRatingEl.textContent = s.lastRating.toFixed(1);
   } else {
     statLastRatingEl.textContent = s.lastRating;
+  }
+
+  if (s.games > 0 && s.ratingSum > 0) {
+    const avg = s.ratingSum / s.games;
+    statAvgRatingEl.textContent = avg.toFixed(1);
+  } else {
+    statAvgRatingEl.textContent = "—";
   }
 }
 
@@ -386,13 +395,14 @@ function loadGame() {
       gameState.points = 0;
     }
 
-    if (data.stats) {
+        if (data.stats) {
       gameState.playerStats = {
         games: data.stats.games ?? 0,
         goals: data.stats.goals ?? 0,
         assists: data.stats.assists ?? 0,
         cleanSheets: data.stats.cleanSheets ?? 0,
-        lastRating: data.stats.lastRating ?? null
+        lastRating: data.stats.lastRating ?? null,
+        ratingSum: data.stats.ratingSum ?? 0
       };
     } else {
       gameState.playerStats = {
@@ -400,7 +410,8 @@ function loadGame() {
         goals: 0,
         assists: 0,
         cleanSheets: 0,
-        lastRating: null
+        lastRating: null,
+        ratingSum: 0
       };
     }
 
@@ -465,7 +476,8 @@ startGameBtn.addEventListener("click", () => {
     goals: 0,
     assists: 0,
     cleanSheets: 0,
-    lastRating: null
+    lastRating: null,
+    ratingSum: 0
   };
 
   creationError.textContent = "";
@@ -1231,6 +1243,9 @@ function endMatch() {
   const finalRating = Math.round(clampedRating * 10) / 10;
   gameState.playerStats.lastRating = finalRating;
 
+  // acumular soma de notas para média
+  gameState.playerStats.ratingSum += finalRating;
+
   // evolução de atributos com base na nota
   const improvedAttrs = applyAttributeGrowth(finalRating);
 
@@ -1504,6 +1519,16 @@ function endSeason() {
     `Terminaste com ${gameState.points} pontos e forma atual de ${gameState.player.form}.`,
     "system"
   );
+
+  const s = gameState.playerStats;
+  if (s.games > 0 && s.ratingSum > 0) {
+    const avg = Math.round((s.ratingSum / s.games) * 10) / 10;
+    addStoryLine(
+      `A tua média de notas nesta época foi ${avg.toFixed(1)}.`,
+      "system"
+    );
+  }
+
   addStoryLine(
     "Podes começar uma nova carreira do zero e tentar fazer ainda melhor.",
     "system"
