@@ -1033,28 +1033,157 @@ function endMatch() {
   addStoryLine("O árbitro apita para o final do jogo.", "narrator");
   addStoryLine(resultText, "narrator");
 
+
   const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
   const isSeasonOver = gamesPlayed >= gameState.totalMatches;
 
   if (isSeasonOver) {
     endSeason();
   } else {
-    addStoryLine(
-      `Já levas ${gamesPlayed} jogos nesta época. Faltam ${gameState.totalMatches - gamesPlayed} jogos.`,
-      "system"
-    );
-
-    setChoices([
-      {
-        label: "Gerir dias entre jogos",
-        onSelect: () => betweenMatches()
-      },
-      {
-        label: "Voltar ao início (nova personagem)",
-        onSelect: () => newCareer()
-      }
-    ]);
+    postMatchPress();
   }
+}
+
+function postMatchPress() {
+  const gamesPlayed = gameState.wins + gameState.draws + gameState.losses;
+  const remaining = Math.max(gameState.totalMatches - gamesPlayed, 0);
+
+  addStoryLine(
+    `Já levas ${gamesPlayed} jogos nesta época. Faltam ${remaining} jogos.`,
+    "system"
+  );
+
+  addStoryLine(
+    "Depois do jogo, um repórter aproxima-se de ti na zona mista com o microfone na mão.",
+    "narrator"
+  );
+  addStoryLine(
+    "Ele pergunta o que achaste da tua exibição e do resultado.",
+    "narrator"
+  );
+
+  setChoices([
+    {
+      label: "Ser humilde e elogiar a equipa",
+      onSelect: () => handlePressChoice("humble")
+    },
+    {
+      label: "Ser confiante e destacar o teu desempenho",
+      onSelect: () => handlePressChoice("confident")
+    },
+    {
+      label: "Culpar fatores externos (árbitro, relvado, sorte)",
+      onSelect: () => handlePressChoice("blame")
+    }
+  ]);
+}
+
+function handlePressChoice(option) {
+  const p = gameState.player;
+  const att = p.attributes;
+  const social = att.Social ?? 1;
+  const mental = att.Mental ?? 1;
+
+  if (option === "humble") {
+    addStoryLine(
+      "Dizes que o mérito é da equipa e da forma como trabalharam juntos.",
+      "player"
+    );
+    const result = rollSkill(social + mental, 8);
+    if (result.outcome === "greatSuccess" || result.outcome === "success") {
+      addStoryLine(
+        "A imprensa gosta da tua postura. Ganhas respeito no balneário e entre os adeptos.",
+        "narrator"
+      );
+      p.morale += 4;
+      p.form += 2;
+    } else {
+      addStoryLine(
+        "A resposta passa um pouco ao lado, mas pelo menos não crias polémicas.",
+        "narrator"
+      );
+      p.morale += 1;
+    }
+  } else if (option === "confident") {
+    addStoryLine(
+      "Assumes que estiveste bem e que és capaz de decidir jogos.",
+      "player"
+    );
+    const result = rollSkill(social + mental, 10);
+    if (result.outcome === "greatSuccess") {
+      addStoryLine(
+        "As declarações soam a confiança e ambição saudável. A opinião pública fica curiosa contigo.",
+        "narrator"
+      );
+      p.morale += 6;
+      p.form += 3;
+    } else if (result.outcome === "success") {
+      addStoryLine(
+        "As tuas palavras passam como confiança normal de jogador competitivo.",
+        "narrator"
+      );
+      p.morale += 3;
+    } else if (result.outcome === "fail") {
+      addStoryLine(
+        "Alguns comentadores dizem que talvez estejas a falar demais para quem ainda provou pouco.",
+        "narrator"
+      );
+      p.morale -= 2;
+    } else {
+      addStoryLine(
+        "As tuas palavras caem mal. Manchetes falam em arrogância e ego.",
+        "narrator"
+      );
+      p.morale -= 5;
+      p.form -= 3;
+    }
+  } else if (option === "blame") {
+    addStoryLine(
+      "Apontas o dedo ao árbitro, ao relvado e à falta de sorte.",
+      "player"
+    );
+    const result = rollSkill(mental, 9);
+    if (result.outcome === "greatSuccess") {
+      addStoryLine(
+        "Consegues explicar-te sem atacar ninguém diretamente. Alguns adeptos até concordam contigo.",
+        "narrator"
+      );
+      p.morale += 2;
+    } else if (result.outcome === "success") {
+      addStoryLine(
+        "As declarações passam, mas o treinador não fica especialmente contente.",
+        "narrator"
+      );
+      p.morale -= 1;
+    } else {
+      addStoryLine(
+        "As declarações geram polémica. Parece que arranjaste problemas desnecessários.",
+        "narrator"
+      );
+      p.morale -= 4;
+      p.form -= 2;
+    }
+  }
+
+  clampPlayerStatus();
+  updateStatus();
+  saveGame();
+
+  addStoryLine(
+    "A entrevista termina e vais para o balneário pensar no que vem a seguir.",
+    "system"
+  );
+
+  setChoices([
+    {
+      label: "Gerir dias entre jogos",
+      onSelect: () => betweenMatches()
+    },
+    {
+      label: "Voltar ao início (nova personagem)",
+      onSelect: () => newCareer()
+    }
+  ]);
 }
 
 function betweenMatches() {
