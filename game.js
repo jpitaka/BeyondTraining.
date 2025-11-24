@@ -511,6 +511,11 @@ startGameBtn.addEventListener("click", () => {
     ratingSum: 0
   };
 
+    gameState.injury = {
+    isInjured: false,
+    gamesToMiss: 0
+  };
+
   creationError.textContent = "";
   saveGame();
   initGameUI();
@@ -1037,16 +1042,18 @@ function handleHighlight2(action) {
       p.form -= 5;
     } else {
         addStoryLine(
-        "Sentes uma fisgada na perna a meio do sprint e tens de abrandar. Parece uma pequena lesão.",
+        "Sentes uma fisgada na perna a meio do sprint e tens de abrandar. Parece uma lesão mais séria.",
         "narrator"
         );
         p.morale -= 10;
         p.form -= 10;
 
+        const gamesOut = 1 + Math.floor(Math.random() * 3); // 1 a 3 jogos
         gameState.injury.isInjured = true;
-        gameState.injury.gamesToMiss = 1;
+        gameState.injury.gamesToMiss = gamesOut;
+
         addStoryLine(
-        "O departamento médico indica que vais falhar pelo menos o próximo jogo.",
+        `O departamento médico indica que vais falhar aproximadamente ${gamesOut} jogo(s).`,
         "system"
         );
     }
@@ -1569,27 +1576,56 @@ function betweenMatches() {
 
   const gamesPlayed = getGamesPlayed();
   const nextMatchNumber = gamesPlayed + 1;
+  const inj = gameState.injury;
 
-  addStoryLine(
-    `Entre o fim do jogo ${gamesPlayed} e o início do jogo ${nextMatchNumber}, tens alguns dias para te preparar.`,
-    "narrator"
-  );
-  addStoryLine("Como queres aproveitar este período?", "narrator");
+  // Se estiver lesionado, mostrar menu de reabilitação
+  if (inj && inj.isInjured && inj.gamesToMiss > 0) {
+    addStoryLine(
+      `Entre o jogo ${gamesPlayed} e o jogo ${nextMatchNumber}, o foco é a tua recuperação física.`,
+      "narrator"
+    );
+    addStoryLine(
+      "Os médicos e fisioterapeutas apresentam-te diferentes opções de reabilitação.",
+      "narrator"
+    );
 
-  setChoices([
-    {
-      label: "Treinar físico (mais força e resistência)",
-      onSelect: () => chooseBetweenMatches("physical")
-    },
-    {
-      label: "Treinar técnica (toque de bola e criatividade)",
-      onSelect: () => chooseBetweenMatches("technical")
-    },
-    {
-      label: "Descansar e recuperar",
-      onSelect: () => chooseBetweenMatches("rest")
-    }
-  ]);
+    setChoices([
+      {
+        label: "Reabilitação intensiva (tentar voltar mais rápido, mas exigente)",
+        onSelect: () => chooseRehab("intense")
+      },
+      {
+        label: "Reabilitação equilibrada (progresso estável)",
+        onSelect: () => chooseRehab("balanced")
+      },
+      {
+        label: "Descanso total (priorizar bem-estar mental)",
+        onSelect: () => chooseRehab("rest")
+      }
+    ]);
+  } else {
+    // Jogador apto: menu normal de treino
+    addStoryLine(
+      `Entre o fim do jogo ${gamesPlayed} e o início do jogo ${nextMatchNumber}, tens alguns dias para te preparar.`,
+      "narrator"
+    );
+    addStoryLine("Como queres aproveitar este período?", "narrator");
+
+    setChoices([
+      {
+        label: "Treinar físico (mais força e resistência)",
+        onSelect: () => chooseBetweenMatches("physical")
+      },
+      {
+        label: "Treinar técnica (toque de bola e criatividade)",
+        onSelect: () => chooseBetweenMatches("technical")
+      },
+      {
+        label: "Descansar e recuperar",
+        onSelect: () => chooseBetweenMatches("rest")
+      }
+    ]);
+  }
 }
 
 function chooseBetweenMatches(option) {
@@ -1627,6 +1663,93 @@ function chooseBetweenMatches(option) {
 
   addStoryLine(
     "Depois destes dias, aproximam-se as horas do próximo jogo.",
+    "system"
+  );
+
+  setChoices([
+    {
+      label: "Seguir para o próximo jogo",
+      onSelect: () => startPreMatch()
+    },
+    {
+      label: "Voltar ao início (nova personagem)",
+      secondary: true,
+      onSelect: () => newCareer()
+    }
+  ]);
+}
+
+function chooseRehab(option) {
+  const p = gameState.player;
+  const inj = gameState.injury;
+
+  if (!inj || !inj.isInjured || inj.gamesToMiss <= 0) {
+    // fallback: se por algum motivo não estiver lesionado, volta ao menu normal
+    betweenMatches();
+    return;
+  }
+
+  if (option === "intense") {
+    addStoryLine(
+      "Aceitas um plano de reabilitação intensivo: sessões longas de fisioterapia, ginásio e trabalho específico.",
+      "player"
+    );
+    p.stamina -= 10;
+    p.form -= 2;
+
+    if (inj.gamesToMiss > 1) {
+      inj.gamesToMiss -= 1;
+      addStoryLine(
+        "O plano é duro, mas os resultados aparecem: encurtas em um jogo o tempo previsto de ausência.",
+        "narrator"
+      );
+    } else {
+      addStoryLine(
+        "Já estás perto do regresso. O plano intensivo ajuda-te a sentir mais confiante.",
+        "narrator"
+      );
+      p.morale += 2;
+    }
+  } else if (option === "balanced") {
+    addStoryLine(
+      "Optas por uma reabilitação equilibrada, alternando entre fisioterapia, ginásio leve e descanso.",
+      "player"
+    );
+    p.stamina -= 3;
+    p.form += 1;
+
+    if (inj.gamesToMiss > 2) {
+      inj.gamesToMiss -= 1;
+      addStoryLine(
+        "Ao longo dos dias, a dor começa a diminuir. Os médicos admitem que podes voltar um pouco mais cedo.",
+        "narrator"
+      );
+    } else {
+      addStoryLine(
+        "A recuperação segue o plano. Não apressas nada, mas também não ficas para trás.",
+        "narrator"
+      );
+    }
+  } else if (option === "rest") {
+    addStoryLine(
+      "Decides respeitar totalmente o corpo: descanso, sono, alimentação e rotinas suaves.",
+      "player"
+    );
+    p.stamina += 10;
+    p.morale += 3;
+    addStoryLine(
+      "Fisicamente podes demorar o tempo previsto a voltar, mas mentalmente sentes-te mais estável.",
+      "narrator"
+    );
+    // não mexe em gamesToMiss: recuperação segue o tempo normal
+  }
+
+  clampPlayerStatus();
+  updateStatus();
+  saveGame();
+
+  addStoryLine(
+    "Com o plano de recuperação definido, o próximo jogo aproxima-se.",
     "system"
   );
 
