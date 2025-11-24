@@ -21,6 +21,9 @@ const gameState = {
   scoreOpponent: 0,
   highlightIndex: 0,
 
+  // rating do jogo atual
+  currentRating: null,
+
   // dados da época
   totalMatches: fixtures.length,
   wins: 0,
@@ -33,7 +36,8 @@ const gameState = {
     games: 0,
     goals: 0,
     assists: 0,
-    cleanSheets: 0
+    cleanSheets: 0,
+    lastRating: null
   }
 };
 
@@ -108,6 +112,7 @@ const statGamesEl = document.getElementById("stat-games");
 const statGoalsEl = document.getElementById("stat-goals");
 const statAssistsEl = document.getElementById("stat-assists");
 const statCleanSheetsEl = document.getElementById("stat-cleansheets");
+const statLastRatingEl = document.getElementById("stat-last-rating");
 
 const scorePlayerEl = document.getElementById("score-player");
 const scoreOpponentEl = document.getElementById("score-opponent");
@@ -192,6 +197,14 @@ function updateStatsUI() {
   statGoalsEl.textContent = s.goals;
   statAssistsEl.textContent = s.assists;
   statCleanSheetsEl.textContent = s.cleanSheets;
+
+  if (s.lastRating == null) {
+    statLastRatingEl.textContent = "—";
+  } else if (typeof s.lastRating === "number") {
+    statLastRatingEl.textContent = s.lastRating.toFixed(1);
+  } else {
+    statLastRatingEl.textContent = s.lastRating;
+  }
 }
 
 function clearStory() {
@@ -246,6 +259,28 @@ function clampPlayerStatus() {
   p.stamina = Math.max(0, Math.min(100, p.stamina));
   p.morale = Math.max(0, Math.min(100, p.morale));
   p.form = Math.max(0, Math.min(100, p.form));
+}
+
+function applyRatingChange(delta) {
+  if (gameState.currentRating == null) {
+    gameState.currentRating = 6; // base neutra
+  }
+  gameState.currentRating = Math.max(
+    1,
+    Math.min(10, gameState.currentRating + delta)
+  );
+}
+
+function applyRatingFromOutcome(outcome) {
+  if (outcome === "greatSuccess") {
+    applyRatingChange(1.0);
+  } else if (outcome === "success") {
+    applyRatingChange(0.5);
+  } else if (outcome === "fail") {
+    applyRatingChange(-0.5);
+  } else if (outcome === "badFail") {
+    applyRatingChange(-1.0);
+  }
 }
 
 // ============================
@@ -308,14 +343,16 @@ function loadGame() {
         games: data.stats.games ?? 0,
         goals: data.stats.goals ?? 0,
         assists: data.stats.assists ?? 0,
-        cleanSheets: data.stats.cleanSheets ?? 0
+        cleanSheets: data.stats.cleanSheets ?? 0,
+        lastRating: data.stats.lastRating ?? null
       };
     } else {
       gameState.playerStats = {
         games: 0,
         goals: 0,
         assists: 0,
-        cleanSheets: 0
+        cleanSheets: 0,
+        lastRating: null
       };
     }
 
@@ -379,7 +416,8 @@ startGameBtn.addEventListener("click", () => {
     games: 0,
     goals: 0,
     assists: 0,
-    cleanSheets: 0
+    cleanSheets: 0,
+    lastRating: null
   };
 
   creationError.textContent = "";
@@ -502,6 +540,7 @@ function startMatch() {
   gameState.phase = "matchHighlight";
   gameState.highlightIndex = 0;
   gameState.minute = 5;
+  gameState.currentRating = 6; // nota base no início do jogo
   updateStatus();
 
   addStoryLine(
@@ -705,6 +744,8 @@ function handleHighlight1(action) {
     );
     const base = att.Tecnica + Math.floor(p.form / 30);
     const result = rollSkill(base, 11);
+    applyRatingFromOutcome(result.outcome);
+
     if (result.outcome === "greatSuccess") {
       addStoryLine(
         "Recebes, driblas um adversário e finalizas para golo. A equipa sente que pode ganhar.",
@@ -743,6 +784,8 @@ function handleHighlight1(action) {
     );
     const base = att.Tactica + 1;
     const result = rollSkill(base, 8);
+    applyRatingFromOutcome(result.outcome);
+
     if (result.outcome === "greatSuccess" || result.outcome === "success") {
       addStoryLine(
         "A equipa ganha controlo do jogo. Não criam uma oportunidade clara, mas mandam no ritmo.",
@@ -779,6 +822,8 @@ function handleHighlight2(action) {
     p.stamina -= 15;
     const base = att.Fisico + att.Mental;
     const result = rollSkill(base, 11);
+    applyRatingFromOutcome(result.outcome);
+
     if (result.outcome === "greatSuccess") {
       addStoryLine(
         "Rompes a defesa, crias a jogada decisiva e a bola acaba no fundo das redes!",
@@ -816,6 +861,8 @@ function handleHighlight2(action) {
       "player"
     );
     const result = rollSkill(att.Tactica + 1, 9);
+    applyRatingFromOutcome(result.outcome);
+
     if (result.outcome === "greatSuccess" || result.outcome === "success") {
       addStoryLine(
         "Com inteligência, evitas riscos desnecessários e ajudas a equipa a segurar o resultado.",
@@ -845,6 +892,7 @@ function handleHighlight2(action) {
 
 function resolveAttackResult(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
 
   if (result.outcome === "greatSuccess") {
     addStoryLine(
@@ -883,6 +931,7 @@ function resolveAttackResult(result) {
 
 function resolveBuildUpResult(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
   if (result.outcome === "greatSuccess" || result.outcome === "success") {
     addStoryLine(
       "Jogas simples, a equipa aproxima-se e criam uma jogada coletiva de qualidade.",
@@ -903,6 +952,8 @@ function resolveBuildUpResult(result) {
 
 function resolveSwitchPlay(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
+
   if (result.outcome === "greatSuccess") {
     addStoryLine(
       "O passe longo sai perfeito, encontra o extremo em ótima posição.",
@@ -929,6 +980,8 @@ function resolveSwitchPlay(result) {
 
 function resolveThroughBall(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
+
   if (result.outcome === "greatSuccess") {
     addStoryLine(
       "Passe perfeito nas costas da defesa, isolando o avançado, que não perdoa!",
@@ -957,6 +1010,8 @@ function resolveThroughBall(result) {
 
 function resolveDefensiveDuel(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
+
   if (result.outcome === "greatSuccess") {
     addStoryLine(
       "Desarme limpo e firme. O avançado cai, mas levas a bola contigo. Os adeptos aplaudem.",
@@ -991,6 +1046,8 @@ function resolveDefensiveDuel(result) {
 
 function resolveDelay(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
+
   if (result.outcome === "greatSuccess" || result.outcome === "success") {
     addStoryLine(
       "Recuas bem, fechas a linha de passe e ganhas tempo para a equipa recuperar.",
@@ -1011,6 +1068,8 @@ function resolveDelay(result) {
 
 function resolveCrossClaim(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
+
   if (result.outcome === "greatSuccess") {
     addStoryLine(
       "Sais no tempo certo, saltas no meio de todos e agarras a bola em segurança.",
@@ -1045,6 +1104,8 @@ function resolveCrossClaim(result) {
 
 function resolveShotReaction(result) {
   const p = gameState.player;
+  applyRatingFromOutcome(result.outcome);
+
   if (result.outcome === "greatSuccess") {
     addStoryLine(
       "Reflexo incrível! Defendes à queima-roupa e salvas a equipa.",
@@ -1106,6 +1167,23 @@ function endMatch() {
     gameState.draws += 1;
     gameState.points += 1;
   }
+
+  // ajustar nota pela influência do resultado
+  if (gameState.currentRating == null) {
+    gameState.currentRating = 6;
+  }
+  if (gameState.scorePlayer > gameState.scoreOpponent) {
+    applyRatingChange(0.5);
+  } else if (gameState.scorePlayer < gameState.scoreOpponent) {
+    applyRatingChange(-0.5);
+  }
+
+  // nota final do jogo (1 casa decimal)
+  const finalRating = Math.max(
+    1,
+    Math.min(10, gameState.currentRating)
+  );
+  gameState.playerStats.lastRating = Math.round(finalRating * 10) / 10;
 
   // atualizar estatísticas de jogos e balizas invioladas
   gameState.playerStats.games += 1;
