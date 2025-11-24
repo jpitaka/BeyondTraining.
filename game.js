@@ -15,14 +15,19 @@ const fixtures = [
 // Estado global do jogo
 const gameState = {
   player: null,
-  phase: "creation", // "creation" | "preMatch" | "matchHighlight" | "betweenMatches" | "postMatch"
+  phase: "creation",
   minute: 0,
   scorePlayer: 0,
   scoreOpponent: 0,
   highlightIndex: 0,
 
-  // rating do jogo atual
   currentRating: null,
+
+  // estado de lesão
+  injury: {
+    isInjured: false,
+    gamesToMiss: 0
+  },
 
   // dados da época
   totalMatches: fixtures.length,
@@ -103,6 +108,7 @@ const attributesList = document.getElementById("attributes-list");
 const infoStamina = document.getElementById("info-stamina");
 const infoMorale = document.getElementById("info-morale");
 const infoForm = document.getElementById("info-form");
+const infoInjury = document.getElementById("info-injury");
 
 const seasonMatchEl = document.getElementById("season-match");
 const seasonRecordEl = document.getElementById("season-record");
@@ -191,6 +197,7 @@ function updateStatus() {
 
   updateSeasonUI();
   updateStatsUI();
+  updateInjuryUI();
 }
 
 function updateStatsUI() {
@@ -213,6 +220,18 @@ function updateStatsUI() {
     statAvgRatingEl.textContent = avg.toFixed(1);
   } else {
     statAvgRatingEl.textContent = "—";
+  }
+}
+
+function updateInjuryUI() {
+  if (!infoInjury) return;
+
+  const inj = gameState.injury;
+  if (!inj || !inj.isInjured || inj.gamesToMiss <= 0) {
+    infoInjury.textContent = "Apto";
+  } else {
+    const jogos = inj.gamesToMiss;
+    infoInjury.textContent = `Lesionado (${jogos} jogo(s) de fora)`;
   }
 }
 
@@ -356,7 +375,8 @@ function saveGame() {
       losses: gameState.losses,
       points: gameState.points
     },
-    stats: gameState.playerStats
+    stats: gameState.playerStats,
+    injury: gameState.injury
   };
 
   try {
@@ -412,6 +432,17 @@ function loadGame() {
         cleanSheets: 0,
         lastRating: null,
         ratingSum: 0
+      };
+    }
+        if (data.injury) {
+      gameState.injury = {
+        isInjured: !!data.injury.isInjured,
+        gamesToMiss: data.injury.gamesToMiss ?? 0
+      };
+    } else {
+      gameState.injury = {
+        isInjured: false,
+        gamesToMiss: 0
       };
     }
 
@@ -498,6 +529,13 @@ continueCareerBtn.addEventListener("click", () => {
 // ============================
 
 function startPreMatch() {
+  // se estiver lesionado e ainda tiver jogos para falhar, simula um jogo sem te meter em campo
+  const inj = gameState.injury;
+  if (inj && inj.isInjured && inj.gamesToMiss > 0) {
+    handleInjuredMatch();
+    return;
+  }
+
   gameState.phase = "preMatch";
   gameState.minute = 0;
   gameState.scorePlayer = 0;
@@ -545,6 +583,96 @@ function startPreMatch() {
       onSelect: () => handlePreMatchChoice("nervous")
     }
   ]);
+}
+
+function handleInjuredMatch() {
+  gameState.phase = "postMatch";
+  clearStory();
+
+  const gamesPlayedBefore = getGamesPlayed();
+  const matchNumber = gamesPlayedBefore + 1;
+  const fixture = getCurrentFixture();
+  const opponentName = fixture ? fixture.name : "o adversário";
+
+  addStoryLine(
+    `Estás a recuperar de uma lesão e ficas de fora do jogo ${matchNumber} contra o ${opponentName}.`,
+    "narrator"
+  );
+
+  // Simular resultado do jogo sem o jogador
+  const diff = fixture ? fixture.difficulty : 1;
+  let winProb = 0.4 - 0.05 * diff;
+  if (winProb < 0.2) winProb = 0.2;
+  const drawProb = 0.3;
+  const r = Math.random();
+
+  let resultText;
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+
+  if (r < winProb) {
+    goalsFor = 1;
+    goalsAgainst = 0;
+    gameState.wins += 1;
+    gameState.points += 3;
+    resultText = "Mesmo sem ti, a equipa consegue ganhar o jogo.";
+    gameState.player.morale += 1;
+  } else if (r < winProb + drawProb) {
+    goalsFor = 1;
+    goalsAgainst = 1;
+    gameState.draws += 1;
+    gameState.points += 1;
+    resultText = "A equipa empata. Não é mau, mas gostavas de ter ajudado em campo.";
+  } else {
+    goalsFor = 0;
+    goalsAgainst = 1;
+    gameState.losses += 1;
+    resultText = "A equipa perde o jogo, e ficas a sentir que podias ter feito a diferença.";
+    gameState.player.morale -= 2;
+    gameState.player.form -= 1;
+  }
+
+  gameState.minute = 90;
+  gameState.scorePlayer = goalsFor;
+  gameState.scoreOpponent = goalsAgainst;
+
+  // reduzir jogos de fora
+  if (gameState.injury) {
+    gameState.injury.gamesToMiss -= 1;
+    if (gameState.injury.gamesToMiss <= 0) {
+      gameState.injury.isInjured = false;
+      gameState.injury.gamesToMiss = 0;
+      addStoryLine(
+        "Boas notícias do departamento médico: estás novamente apto para competir no próximo jogo.",
+        "system"
+      );
+    }
+  }
+
+  clampPlayerStatus();
+  updateStatus();
+  saveGame();
+
+  addStoryLine(resultText, "system");
+
+  const gamesPlayedAfter = getGamesPlayed();
+  const isSeasonOver = gamesPlayedAfter >= gameState.totalMatches;
+
+  if (isSeasonOver) {
+    endSeason();
+  } else {
+    setChoices([
+      {
+        label: "Gerir dias entre jogos",
+        onSelect: () => betweenMatches()
+      },
+      {
+        label: "Voltar ao início (nova personagem)",
+        secondary: true,
+        onSelect: () => newCareer()
+      }
+    ]);
+  }
 }
 
 function handlePreMatchChoice(option) {
@@ -908,12 +1036,19 @@ function handleHighlight2(action) {
       p.morale -= 5;
       p.form -= 5;
     } else {
-      addStoryLine(
+        addStoryLine(
         "Sentes uma fisgada na perna a meio do sprint e tens de abrandar. Parece uma pequena lesão.",
         "narrator"
-      );
-      p.morale -= 10;
-      p.form -= 10;
+        );
+        p.morale -= 10;
+        p.form -= 10;
+
+        gameState.injury.isInjured = true;
+        gameState.injury.gamesToMiss = 1;
+        addStoryLine(
+        "O departamento médico indica que vais falhar pelo menos o próximo jogo.",
+        "system"
+        );
     }
   } else {
     addStoryLine(
