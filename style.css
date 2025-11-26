@@ -215,3 +215,35 @@ main#game {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+#season-objectives {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+#season-objectives li {
+  margin-bottom: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.objective-text {
+  flex: 1;
+}
+
+.objective-progress {
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.objective-done .objective-text {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.objective-done .objective-progress {
+  font-weight: 600;
+}

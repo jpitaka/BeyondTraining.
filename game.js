@@ -118,6 +118,7 @@ const seasonMatchEl = document.getElementById("season-match");
 const seasonRecordEl = document.getElementById("season-record");
 const seasonPointsEl = document.getElementById("season-points");
 const seasonOpponentEl = document.getElementById("season-opponent");
+const seasonObjectivesEl = document.getElementById("season-objectives");
 
 const statGamesEl = document.getElementById("stat-games");
 const statGoalsEl = document.getElementById("stat-goals");
@@ -203,6 +204,7 @@ function updateStatus() {
   updateStatsUI();
   updateInjuryUI();
   updateStatusBars();
+  updateObjectivesUI();
 }
 
 function updateStatusBars() {
@@ -241,6 +243,117 @@ function updateStatsUI() {
   } else {
     statAvgRatingEl.textContent = "—";
   }
+}
+
+function getAverageRating() {
+  const s = gameState.playerStats;
+  if (!s || !s.games || s.games === 0) return null;
+  if (!s.ratingSum || s.ratingSum <= 0) return null;
+  return s.ratingSum / s.games;
+}
+
+/**
+ * Devolve a lista de objetivos da época para o jogador atual,
+ * com informação de progresso e se já estão concluídos.
+ */
+function getSeasonObjectivesForCurrentPlayer() {
+  const p = gameState.player;
+  const s = gameState.playerStats;
+  if (!p || !s) return [];
+
+  const avg = getAverageRating();
+
+  const objectives = [];
+
+  // Objetivos comuns a todas as posições
+  // 1) Jogar pelo menos 4 jogos
+  objectives.push({
+    id: "games",
+    text: "Jogar pelo menos 4 jogos",
+    progress: `${s.games}/4`,
+    done: s.games >= 4
+  });
+
+  // 2) Média de notas mínima 7.0
+  let avgProgress = "—/7.0";
+  let avgDone = false;
+  if (avg !== null) {
+    avgProgress = `${avg.toFixed(1)}/7.0`;
+    avgDone = avg >= 7.0;
+  }
+  objectives.push({
+    id: "avg",
+    text: "Ter média de notas de pelo menos 7.0",
+    progress: avgProgress,
+    done: avgDone
+  });
+
+  // Objetivos específicos por posição
+  if (p.positionKey === "Forward") {
+    objectives.push({
+      id: "goals",
+      text: "Marcar pelo menos 3 golos",
+      progress: `${s.goals}/3`,
+      done: s.goals >= 3
+    });
+  } else if (p.positionKey === "Midfielder") {
+    objectives.push({
+      id: "assists",
+      text: "Fazer pelo menos 3 assistências",
+      progress: `${s.assists}/3`,
+      done: s.assists >= 3
+    });
+  } else if (p.positionKey === "Goalkeeper") {
+    objectives.push({
+      id: "cleansheets",
+      text: "Conseguir pelo menos 2 balizas invioladas",
+      progress: `${s.cleanSheets}/2`,
+      done: s.cleanSheets >= 2
+    });
+  } else if (p.positionKey === "Defender") {
+    // Para já, usamos um objetivo extra genérico
+    objectives.push({
+      id: "solid",
+      text: "Manter forma ≥ 60 no fim da época",
+      progress: `${gameState.player.form}/60`,
+      done: gameState.player.form >= 60
+    });
+  }
+
+  return objectives;
+}
+
+function updateObjectivesUI() {
+  if (!seasonObjectivesEl) return;
+
+  const objectives = getSeasonObjectivesForCurrentPlayer();
+  seasonObjectivesEl.innerHTML = "";
+
+  if (!objectives.length) {
+    const li = document.createElement("li");
+    li.textContent = "Sem objetivos definidos.";
+    seasonObjectivesEl.appendChild(li);
+    return;
+  }
+
+  objectives.forEach((obj) => {
+    const li = document.createElement("li");
+    if (obj.done) {
+      li.classList.add("objective-done");
+    }
+
+    const textSpan = document.createElement("span");
+    textSpan.classList.add("objective-text");
+    textSpan.textContent = obj.text;
+
+    const progressSpan = document.createElement("span");
+    progressSpan.classList.add("objective-progress");
+    progressSpan.textContent = obj.progress;
+
+    li.appendChild(textSpan);
+    li.appendChild(progressSpan);
+    seasonObjectivesEl.appendChild(li);
+  });
 }
 
 function updateInjuryUI() {
@@ -1805,6 +1918,24 @@ function endSeason() {
       `A tua média de notas nesta época foi ${avg.toFixed(1)}.`,
       "system"
     );
+  }
+
+  // Resumo dos objetivos da época
+  const objectives = getSeasonObjectivesForCurrentPlayer();
+  if (objectives.length > 0) {
+    const doneCount = objectives.filter((o) => o.done).length;
+    addStoryLine(
+      `Concluíste ${doneCount} de ${objectives.length} objetivo(s) da época.`,
+      "system"
+    );
+
+    objectives.forEach((obj) => {
+      const status = obj.done ? "✅ Cumprido" : "❌ Não cumprido";
+      addStoryLine(
+        `${status}: ${obj.text} (progresso: ${obj.progress})`,
+        "system"
+      );
+    });
   }
 
   addStoryLine(
