@@ -110,6 +110,10 @@ const infoMorale = document.getElementById("info-morale");
 const infoForm = document.getElementById("info-form");
 const infoInjury = document.getElementById("info-injury");
 
+const barStamina = document.getElementById("bar-stamina");
+const barMorale = document.getElementById("bar-morale");
+const barForm = document.getElementById("bar-form");
+
 const seasonMatchEl = document.getElementById("season-match");
 const seasonRecordEl = document.getElementById("season-record");
 const seasonPointsEl = document.getElementById("season-points");
@@ -198,6 +202,22 @@ function updateStatus() {
   updateSeasonUI();
   updateStatsUI();
   updateInjuryUI();
+  updateStatusBars();
+}
+
+function updateStatusBars() {
+  const p = gameState.player;
+  if (!p) return;
+
+  if (barStamina) {
+    barStamina.style.width = `${p.stamina}%`;
+  }
+  if (barMorale) {
+    barMorale.style.width = `${p.morale}%`;
+  }
+  if (barForm) {
+    barForm.style.width = `${p.form}%`;
+  }
 }
 
 function updateStatsUI() {
