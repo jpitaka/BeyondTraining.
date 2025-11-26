@@ -115,6 +115,15 @@ const infoMorale = document.getElementById("info-morale");
 const infoForm = document.getElementById("info-form");
 const infoInjury = document.getElementById("info-injury");
 
+const helpPanel = document.getElementById("help-panel");
+const toggleHelpBtn = document.getElementById("toggle-help");
+
+if (toggleHelpBtn && helpPanel) {
+  toggleHelpBtn.addEventListener("click", () => {
+    helpPanel.classList.toggle("hidden");
+  });
+}
+
 const barStamina = document.getElementById("bar-stamina");
 const barMorale = document.getElementById("bar-morale");
 const barForm = document.getElementById("bar-form");

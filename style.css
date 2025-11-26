@@ -247,3 +247,70 @@ main#game {
 .objective-done .objective-progress {
   font-weight: 600;
 }
+
+/* Cabeçalho Beyond Training */
+#bt-header {
+  background: #181818;
+  border-bottom: 1px solid #333;
+  padding: 0.75rem 1rem;
+}
+
+.bt-header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+#bt-header h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.bt-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+#toggle-help {
+  background: #2d7cff;
+  border: none;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#toggle-help:hover {
+  opacity: 0.9;
+}
+
+/* Painel de ajuda */
+.bt-help {
+  max-width: 960px;
+  margin: 0.5rem auto 1rem;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+.bt-help h2 {
+  font-size: 1rem;
+  margin-top: 0;
+}
+
+.bt-help ul {
+  padding-left: 1.1rem;
+  margin: 0.5rem 0 0;
+}
+
+/* Utilitário para esconder elementos */
+.hidden {
+  display: none;
+}
