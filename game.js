@@ -29,6 +29,11 @@ const gameState = {
     gamesToMiss: 0
   },
 
+  // flags de eventos narrativos
+  flags: {
+    transferEventShown: false
+  },
+
   // dados da época
   totalMatches: fixtures.length,
   wins: 0,
@@ -509,7 +514,8 @@ function saveGame() {
       points: gameState.points
     },
     stats: gameState.playerStats,
-    injury: gameState.injury
+    injury: gameState.injury,
+    flags: gameState.flags
   };
 
   try {
@@ -548,7 +554,7 @@ function loadGame() {
       gameState.points = 0;
     }
 
-        if (data.stats) {
+    if (data.stats) {
       gameState.playerStats = {
         games: data.stats.games ?? 0,
         goals: data.stats.goals ?? 0,
@@ -567,7 +573,8 @@ function loadGame() {
         ratingSum: 0
       };
     }
-        if (data.injury) {
+
+    if (data.injury) {
       gameState.injury = {
         isInjured: !!data.injury.isInjured,
         gamesToMiss: data.injury.gamesToMiss ?? 0
@@ -576,6 +583,15 @@ function loadGame() {
       gameState.injury = {
         isInjured: false,
         gamesToMiss: 0
+      };
+    }
+    if (data.flags) {
+      gameState.flags = {
+        transferEventShown: !!data.flags.transferEventShown
+      };
+    } else {
+      gameState.flags = {
+        transferEventShown: false
       };
     }
 
@@ -647,6 +663,10 @@ startGameBtn.addEventListener("click", () => {
     gameState.injury = {
     isInjured: false,
     gamesToMiss: 0
+  };
+
+  gameState.flags = {
+    transferEventShown: false
   };
 
   creationError.textContent = "";
@@ -1737,27 +1757,8 @@ function betweenMatches() {
       }
     ]);
   } else {
-    // Jogador apto: menu normal de treino
-    addStoryLine(
-      `Entre o fim do jogo ${gamesPlayed} e o início do jogo ${nextMatchNumber}, tens alguns dias para te preparar.`,
-      "narrator"
-    );
-    addStoryLine("Como queres aproveitar este período?", "narrator");
-
-    setChoices([
-      {
-        label: "Treinar físico (mais força e resistência)",
-        onSelect: () => chooseBetweenMatches("physical")
-      },
-      {
-        label: "Treinar técnica (toque de bola e criatividade)",
-        onSelect: () => chooseBetweenMatches("technical")
-      },
-      {
-        label: "Descansar e recuperar",
-        onSelect: () => chooseBetweenMatches("rest")
-      }
-    ]);
+    // jogador apto: podemos ter evento de interesse de outros clubes
+    maybeTriggerTransferEvent();
   }
 }
 
@@ -1810,6 +1811,124 @@ function chooseBetweenMatches(option) {
       onSelect: () => newCareer()
     }
   ]);
+}
+
+function showBetweenMatchesTrainingMenu() {
+  const gamesPlayed = getGamesPlayed();
+  const nextMatchNumber = gamesPlayed + 1;
+
+  addStoryLine(
+    `Entre o fim do jogo ${gamesPlayed} e o início do jogo ${nextMatchNumber}, tens alguns dias para te preparar.`,
+    "narrator"
+  );
+  addStoryLine("Como queres aproveitar este período?", "narrator");
+
+  setChoices([
+    {
+      label: "Treinar físico (mais força e resistência)",
+      onSelect: () => chooseBetweenMatches("physical")
+    },
+    {
+      label: "Treinar técnica (toque de bola e criatividade)",
+      onSelect: () => chooseBetweenMatches("technical")
+    },
+    {
+      label: "Descansar e recuperar",
+      onSelect: () => chooseBetweenMatches("rest")
+    }
+  ]);
+}
+
+function maybeTriggerTransferEvent() {
+  const p = gameState.player;
+  const s = gameState.playerStats;
+  const flags = gameState.flags || {};
+  const avg = getAverageRating();
+  const gamesPlayed = getGamesPlayed();
+
+  // já mostrámos este evento nesta carreira
+  if (flags.transferEventShown) {
+    showBetweenMatchesTrainingMenu();
+    return;
+  }
+
+  // verificar se a época está a correr suficientemente bem
+  let goodSeason = false;
+  if (avg !== null && avg >= 7.5) {
+    goodSeason = true;
+  }
+
+  if (p.positionKey === "Forward" && s.goals >= 3) {
+    goodSeason = true;
+  } else if (p.positionKey === "Midfielder" && s.assists >= 3) {
+    goodSeason = true;
+  } else if (p.positionKey === "Goalkeeper" && s.cleanSheets >= 2) {
+    goodSeason = true;
+  } else if (p.positionKey === "Defender" && p.form >= 65) {
+    goodSeason = true;
+  }
+
+  // precisa de pelo menos alguns jogos para fazer sentido
+  if (!goodSeason || gamesPlayed < 2) {
+    showBetweenMatchesTrainingMenu();
+    return;
+  }
+
+  // marcar como já mostrado
+  gameState.flags.transferEventShown = true;
+
+  addStoryLine(
+    "As tuas exibições começam a chamar a atenção fora do clube.",
+    "narrator"
+  );
+  addStoryLine(
+    "O teu agente liga-te e fala em possíveis oportunidades para a próxima época.",
+    "narrator"
+  );
+
+  setChoices([
+    {
+      label: "Focar-te totalmente no clube atual",
+      onSelect: () => resolveTransferChoice("loyal")
+    },
+    {
+      label: "Pedir ao agente para explorar clubes maiores",
+      onSelect: () => resolveTransferChoice("ambitious")
+    }
+  ]);
+}
+
+function resolveTransferChoice(option) {
+  const p = gameState.player;
+  const att = p.attributes;
+
+  if (option === "loyal") {
+    addStoryLine(
+      "Dizes ao agente que, por agora, o foco é respeitar o clube que apostou em ti.",
+      "player"
+    );
+    p.morale += 4;
+    att.Mental = (att.Mental ?? 1) + 1;
+  } else if (option === "ambitious") {
+    addStoryLine(
+      "Dizes ao agente que, se surgir um salto na carreira, estás disponível para ouvir propostas.",
+      "player"
+    );
+    p.form += 3;
+    p.morale -= 1;
+    att.Social = (att.Social ?? 1) + 1;
+  }
+
+  clampPlayerStatus();
+  updateStatus();
+  saveGame();
+
+  addStoryLine(
+    "Independentemente dos rumores, tens agora alguns dias para te preparares para o próximo jogo.",
+    "system"
+  );
+
+  showBetweenMatchesTrainingMenu();
 }
 
 function chooseRehab(option) {
