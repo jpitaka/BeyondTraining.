@@ -101,14 +101,23 @@ const SAVE_KEY = "bt_career_v1";
 // Referências ao DOM
 // ============================
 
-const creationSection = document.getElementById("character-creation");
-const gameMain = document.getElementById("game");
+const characterCreationSection = document.getElementById("character-creation");
+const gameSection = document.getElementById("game");
 const startGameBtn = document.getElementById("start-game-btn");
 const continueCareerBtn = document.getElementById("continue-career-btn");
 const creationError = document.getElementById("creation-error");
 
+const playerNameInput = document.getElementById("player-name");
+const playerPositionSelect = document.getElementById("player-position");
+const playerAgeInput = document.getElementById("player-age");
+const playerFootSelect = document.getElementById("player-foot");
+const playerPersonalitySelect = document.getElementById("player-personality");
+
 const infoName = document.getElementById("info-name");
 const infoPosition = document.getElementById("info-position");
+const infoAge = document.getElementById("info-age");
+const infoFoot = document.getElementById("info-foot");
+const infoPersonality = document.getElementById("info-personality");
 const attributesList = document.getElementById("attributes-list");
 const infoStamina = document.getElementById("info-stamina");
 const infoMorale = document.getElementById("info-morale");
@@ -205,6 +214,12 @@ function updateSeasonUI() {
 function updateStatus() {
   const p = gameState.player;
   if (p) {
+    infoName.textContent = p.name || "";
+    infoPosition.textContent = p.positionLabel || p.positionKey || "";
+    infoAge.textContent = p.age != null ? String(p.age) : "—";
+    infoFoot.textContent = p.foot || "—";
+    infoPersonality.textContent = p.personality || "—";
+
     infoStamina.textContent = `${p.stamina}`;
     infoMorale.textContent = `${p.morale}`;
     infoForm.textContent = `${p.form}`;
@@ -630,24 +645,73 @@ function newCareer() {
 // ============================
 
 startGameBtn.addEventListener("click", () => {
-  const nameInput = document.getElementById("player-name");
-  const positionSelect = document.getElementById("player-position");
+  const name = playerNameInput.value.trim();
+  const positionKey = playerPositionSelect.value;
+  const ageRaw = playerAgeInput.value.trim();
+  const foot = playerFootSelect.value;
+  const personality = playerPersonalitySelect.value;
 
-  const name = nameInput.value.trim();
-  const positionKey = positionSelect.value;
-
-  if (!name || !positionKey) {
-    creationError.textContent = "Preenche o nome e escolhe uma posição.";
+  if (!name) {
+    creationError.textContent = "Por favor, escreve o nome do jogador.";
+    return;
+  }
+  if (!positionKey) {
+    creationError.textContent = "Escolhe uma posição para o jogador.";
+    return;
+  }
+  if (!foot) {
+    creationError.textContent = "Escolhe o pé preferido.";
+    return;
+  }
+  if (!personality) {
+    creationError.textContent = "Escolhe um tipo de personalidade.";
     return;
   }
 
-  const preset = positionPresets[positionKey];
+  let age = parseInt(ageRaw, 10);
+  if (Number.isNaN(age)) {
+    age = 17;
+  }
+  if (age < 14) age = 14;
+  if (age > 40) age = 40;
+
+  const preset = POSITION_PRESETS[positionKey];
+
+  const baseAttributes = { ...preset.attributes };
+
+  // Ajustes pela personalidade
+  switch (personality) {
+    case "Trabalhador silencioso":
+      baseAttributes.Fisico = (baseAttributes.Fisico ?? 1) + 1;
+      baseAttributes.Mental = (baseAttributes.Mental ?? 1) + 1;
+      break;
+    case "Líder calmo":
+      baseAttributes.Mental = (baseAttributes.Mental ?? 1) + 2;
+      baseAttributes.Social = (baseAttributes.Social ?? 1) + 1;
+      break;
+    case "Showman confiante":
+      baseAttributes.Social = (baseAttributes.Social ?? 1) + 2;
+      baseAttributes.Mental = (baseAttributes.Mental ?? 1) - 1;
+      break;
+  }
+
+  // Garantir que nenhum atributo fica abaixo de 1
+  for (const key in baseAttributes) {
+    if (Object.prototype.hasOwnProperty.call(baseAttributes, key)) {
+      if (baseAttributes[key] < 1) {
+        baseAttributes[key] = 1;
+      }
+    }
+  }
 
   gameState.player = {
     name,
+    age,
+    foot,
+    personality,
     positionKey,
     positionLabel: preset.label,
-    attributes: { ...preset.attributes },
+    attributes: baseAttributes,
     stamina: 100,
     morale: 60,
     form: 50
@@ -669,7 +733,7 @@ startGameBtn.addEventListener("click", () => {
     ratingSum: 0
   };
 
-    gameState.injury = {
+  gameState.injury = {
     isInjured: false,
     gamesToMiss: 0
   };
@@ -679,9 +743,13 @@ startGameBtn.addEventListener("click", () => {
   };
 
   creationError.textContent = "";
+
+  // mostrar painel do jogo e esconder criação
+  characterCreationSection.classList.add("hidden");
+  gameSection.classList.remove("hidden");
+
+  updateStatus();
   saveGame();
-  initGameUI();
-  startPreMatch();
 });
 
 continueCareerBtn.addEventListener("click", () => {

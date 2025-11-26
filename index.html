@@ -59,6 +59,31 @@
         </select>
       </div>
 
+        <div class="form-row">
+            <label for="player-age">Idade</label>
+            <input type="number" id="player-age" min="14" max="40" value="17" />
+        </div>
+
+        <div class="form-row">
+            <label for="player-foot">Pé preferido</label>
+            <select id="player-foot">
+            <option value="">-- Escolhe o pé preferido --</option>
+            <option value="Direito">Direito</option>
+            <option value="Esquerdo">Esquerdo</option>
+            <option value="Ambidestro">Ambidestro</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label for="player-personality">Tipo de personalidade</label>
+            <select id="player-personality">
+            <option value="">-- Escolhe um tipo --</option>
+            <option value="Trabalhador silencioso">Trabalhador silencioso</option>
+            <option value="Líder calmo">Líder calmo</option>
+            <option value="Showman confiante">Showman confiante</option>
+            </select>
+        </div>
+
       <button id="start-game-btn">Começar carreira</button>
       <button id="continue-career-btn" class="secondary hidden">
         Continuar carreira existente
@@ -72,6 +97,9 @@
         <h2>Jogador</h2>
         <p><strong>Nome:</strong> <span id="info-name"></span></p>
         <p><strong>Posição:</strong> <span id="info-position"></span></p>
+        <p><strong>Idade:</strong> <span id="info-age">—</span></p>
+        <p><strong>Pé preferido:</strong> <span id="info-foot">—</span></p>
+        <p><strong>Personalidade:</strong> <span id="info-personality">—</span></p>
 
         <h3>Atributos</h3>
         <ul id="attributes-list"></ul>
