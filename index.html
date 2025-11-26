@@ -6,11 +6,39 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <!-- NOVO HEADER NO TOPO -->
+  <header id="bt-header">
+    <div class="bt-header-inner">
+      <div>
+        <h1>Beyond Training</h1>
+        <p class="bt-subtitle">Modo carreira narrativa para jovens jogadores</p>
+      </div>
+      <button id="toggle-help" type="button">Ajuda</button>
+    </div>
+  </header>
+
+  <!-- PAINEL DE AJUDA LOGO A SEGUIR AO HEADER -->
+  <section id="help-panel" class="bt-help hidden">
+    <h2>Como jogar</h2>
+    <ul>
+      <li>Cria o teu jogador: escolhe nome e posição.</li>
+      <li>Cada jogo tem momentos-chave onde decides o que fazer em campo.</li>
+      <li>Entre jogos decides entre treino, descanso e reabilitação se estiveres lesionado.</li>
+      <li>As tuas escolhas afetam atributos, forma, risco de lesão e interesse de outros clubes.</li>
+      <li>Os objetivos da época ajudam-te a medir a tua evolução ao longo da carreira.</li>
+    </ul>
+  </section>
+
+  <!-- APP PRINCIPAL -->
   <div id="app">
+    <!-- REMOVE ESTE HEADER ANTIGO -->
+    <!--
     <header>
       <h1>BeyondTraining</h1>
       <p>Cria a tua carreira de futebolista</p>
     </header>
+    -->
 
     <!-- Secção de criação de personagem -->
     <section id="character-creation">
@@ -31,9 +59,11 @@
         </select>
       </div>
 
-        <button id="start-game-btn">Começar carreira</button>
-        <button id="continue-career-btn" class="secondary hidden">Continuar carreira existente</button>
-        <p id="creation-error" class="error-message"></p>
+      <button id="start-game-btn">Começar carreira</button>
+      <button id="continue-career-btn" class="secondary hidden">
+        Continuar carreira existente
+      </button>
+      <p id="creation-error" class="error-message"></p>
     </section>
 
     <!-- Secção principal do jogo -->
@@ -49,31 +79,30 @@
         <h3>Estado</h3>
 
         <div class="status-row">
-        <span class="status-label">Stamina</span>
-        <div class="status-bar">
+          <span class="status-label">Stamina</span>
+          <div class="status-bar">
             <div class="status-bar-fill" id="bar-stamina"></div>
-        </div>
-        <span class="status-value" id="info-stamina">0</span>
+          </div>
+          <span class="status-value" id="info-stamina">0</span>
         </div>
 
         <div class="status-row">
-        <span class="status-label">Moral</span>
-        <div class="status-bar">
+          <span class="status-label">Moral</span>
+          <div class="status-bar">
             <div class="status-bar-fill" id="bar-morale"></div>
-        </div>
-        <span class="status-value" id="info-morale">0</span>
+          </div>
+          <span class="status-value" id="info-morale">0</span>
         </div>
 
         <div class="status-row">
-        <span class="status-label">Forma</span>
-        <div class="status-bar">
+          <span class="status-label">Forma</span>
+          <div class="status-bar">
             <div class="status-bar-fill" id="bar-form"></div>
-        </div>
-        <span class="status-value" id="info-form">0</span>
+          </div>
+          <span class="status-value" id="info-form">0</span>
         </div>
 
         <p><strong>Condição física:</strong> <span id="info-injury">Apto</span></p>
-
 
         <h3>Época</h3>
         <p><strong>Jogo:</strong> <span id="season-match">1 / 5</span></p>
@@ -94,10 +123,10 @@
 
         <h3>Jogo Atual</h3>
         <p><strong>Resultado:</strong>
-            <span id="score-player">0</span> - <span id="score-opponent">0</span>
+          <span id="score-player">0</span> - <span id="score-opponent">0</span>
         </p>
         <p><strong>Minuto:</strong> <span id="info-minute">0'</span></p>
-        </aside>
+      </aside>
 
       <section id="story-panel">
         <div id="story-log"></div>
@@ -106,26 +135,7 @@
     </main>
   </div>
 
+  <!-- SCRIPT SEMPRE MESMO ANTES DO </body> -->
   <script src="game.js"></script>
 </body>
-<header id="bt-header">
-  <div class="bt-header-inner">
-    <div>
-      <h1>Beyond Training</h1>
-      <p class="bt-subtitle">Modo carreira narrativa para jovens jogadores</p>
-    </div>
-    <button id="toggle-help" type="button">Ajuda</button>
-  </div>
-</header>
-<section id="help-panel" class="bt-help hidden">
-  <h2>Como jogar</h2>
-  <ul>
-    <li>Cria o teu jogador: escolhe nome e posição.</li>
-    <li>Cada jogo tem momentos-chave onde decides o que fazer em campo.</li>
-    <li>Entre jogos decides entre treino, descanso e reabilitação se estiveres lesionado.</li>
-    <li>As tuas escolhas afetam atributos, forma, risco de lesão e interesse de outros clubes.</li>
-    <li>Os objetivos da época ajudam-te a medir a tua evolução ao longo da carreira.</li>
-  </ul>
-</section>
-
 </html>
