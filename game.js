@@ -35,6 +35,7 @@ const gameState = {
   },
 
   // dados da época
+  seasonNumber: 1,
   totalMatches: fixtures.length,
   wins: 0,
   draws: 0,
@@ -142,6 +143,7 @@ const seasonRecordEl = document.getElementById("season-record");
 const seasonPointsEl = document.getElementById("season-points");
 const seasonOpponentEl = document.getElementById("season-opponent");
 const seasonObjectivesEl = document.getElementById("season-objectives");
+const seasonNumberEl = document.getElementById("season-number");
 
 const statGamesEl = document.getElementById("stat-games");
 const statGoalsEl = document.getElementById("stat-goals");
@@ -206,6 +208,10 @@ function updateSeasonUI() {
     seasonOpponentEl.textContent = fixture.name;
   } else {
     seasonOpponentEl.textContent = "—";
+  }
+
+  if (seasonNumberEl) {
+    seasonNumberEl.textContent = String(gameState.seasonNumber ?? 1);
   }
 }
 
@@ -530,6 +536,7 @@ function saveGame() {
   const data = {
     player: gameState.player,
     career: {
+      seasonNumber: gameState.seasonNumber,
       totalMatches: gameState.totalMatches,
       wins: gameState.wins,
       draws: gameState.draws,
@@ -564,12 +571,14 @@ function loadGame() {
     gameState.player = data.player;
 
     if (data.career) {
+      gameState.seasonNumber = data.career.seasonNumber ?? 1;
       gameState.totalMatches = data.career.totalMatches ?? fixtures.length;
       gameState.wins = data.career.wins ?? 0;
       gameState.draws = data.career.draws ?? 0;
       gameState.losses = data.career.losses ?? 0;
       gameState.points = data.career.points ?? 0;
     } else {
+      gameState.seasonNumber = 1;
       gameState.totalMatches = fixtures.length;
       gameState.wins = 0;
       gameState.draws = 0;
@@ -637,6 +646,74 @@ function checkForSavedGame() {
 function newCareer() {
   localStorage.removeItem(SAVE_KEY);
   window.location.reload();
+}
+
+function startNewSeason() {
+  const p = gameState.player;
+  if (!p) return;
+
+  // próxima época
+  gameState.seasonNumber = (gameState.seasonNumber ?? 1) + 1;
+
+  // envelhecer jogador (máximo 40)
+  if (typeof p.age === "number") {
+    p.age = Math.min(p.age + 1, 40);
+  }
+
+  // reset época
+  gameState.totalMatches = fixtures.length;
+  gameState.wins = 0;
+  gameState.draws = 0;
+  gameState.losses = 0;
+  gameState.points = 0;
+
+  // reset stats da época
+  gameState.playerStats = {
+    games: 0,
+    goals: 0,
+    assists: 0,
+    cleanSheets: 0,
+    lastRating: null,
+    ratingSum: 0
+  };
+
+  // limpar lesões
+  gameState.injury = {
+    isInjured: false,
+    gamesToMiss: 0
+  };
+
+  // reativar eventos narrativos para a nova época
+  gameState.flags = {
+    transferEventShown: false
+  };
+
+  // recuperar estado físico para início de época
+  p.stamina = 80;
+  p.morale = Math.max(p.morale, 60);
+  p.form = Math.max(p.form, 55);
+
+  clampPlayerStatus();
+  clearStory();
+
+  addStoryLine(
+    `Uma nova época começa. Esta será a tua época ${gameState.seasonNumber} no futebol sénior.`,
+    "system"
+  );
+  addStoryLine(
+    "Depois da pré-época, sentes que tens mais responsabilidade e experiência.",
+    "narrator"
+  );
+
+  updateStatus();
+  saveGame();
+
+  setChoices([
+    {
+      label: "Avançar para o primeiro jogo da nova época",
+      onSelect: () => startPreMatch()
+    }
+  ]);
 }
 
 // ============================
@@ -715,6 +792,8 @@ startGameBtn.addEventListener("click", () => {
     morale: 60,
     form: 50
   };
+
+  gameState.seasonNumber = 1;
 
   // reset época
   gameState.totalMatches = fixtures.length;
@@ -2296,13 +2375,18 @@ function endSeason() {
   }
 
   addStoryLine(
-    "Podes começar uma nova carreira do zero e tentar fazer ainda melhor.",
+    "Chegou a altura de decidir o que vem a seguir na tua carreira.",
     "system"
   );
 
   setChoices([
     {
-      label: "Começar nova carreira",
+      label: "Continuar com esta personagem (nova época)",
+      onSelect: () => startNewSeason()
+    },
+    {
+      label: "Começar uma nova carreira do zero",
+      secondary: true,
       onSelect: () => newCareer()
     }
   ]);
