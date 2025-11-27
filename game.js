@@ -52,7 +52,7 @@ const gameState = {
   }
 };
 
-const positionPresets = {
+const POSITION_PRESETS = {
   Forward: {
     label: "Avançado",
     attributes: {
@@ -176,19 +176,18 @@ function getCurrentFixture() {
 // ============================
 
 function initGameUI() {
-  creationSection.classList.add("hidden");
-  gameMain.classList.remove("hidden");
+  characterCreationSection.classList.add("hidden");
+  gameSection.classList.remove("hidden");
 
   const p = gameState.player;
-  infoName.textContent = p.name;
-  infoPosition.textContent = p.positionLabel;
-
-  attributesList.innerHTML = "";
-  Object.entries(p.attributes).forEach(([attr, value]) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${attr}</span><span>${value}</span>`;
-    attributesList.appendChild(li);
-  });
+  if (p && p.attributes) {
+    attributesList.innerHTML = "";
+    Object.entries(p.attributes).forEach(([attr, value]) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${attr}</span><span>${value}</span>`;
+      attributesList.appendChild(li);
+    });
+  }
 
   updateStatus();
   clearStory();
@@ -744,12 +743,9 @@ startGameBtn.addEventListener("click", () => {
 
   creationError.textContent = "";
 
-  // mostrar painel do jogo e esconder criação
-  characterCreationSection.classList.add("hidden");
-  gameSection.classList.remove("hidden");
-
-  updateStatus();
+  initGameUI();
   saveGame();
+  startPreMatch();
 });
 
 continueCareerBtn.addEventListener("click", () => {
