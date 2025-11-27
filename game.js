@@ -908,6 +908,7 @@ function handleInjuredMatch() {
 
 function handlePreMatchChoice(option) {
   const p = gameState.player;
+  const pers = p.personality || "";
 
   if (option === "silent") {
     addStoryLine(
@@ -916,13 +917,36 @@ function handlePreMatchChoice(option) {
     );
     p.morale += 5;
     p.form += 2;
+
+    if (pers === "Trabalhador silencioso") {
+      addStoryLine(
+        "Este silêncio encaixa com a tua forma de ser: deixas o trabalho falar por ti.",
+        "narrator"
+      );
+      p.form += 1;
+    } else if (pers === "Showman confiante") {
+      addStoryLine(
+        "Conténs-te mais do que é natural para ti. Quase te apetece dizer algo para aliviar a tensão.",
+        "narrator"
+      );
+      p.morale -= 1;
+    }
   } else if (option === "motivate") {
     addStoryLine(
       "Levantas-te e dizes a toda a equipa que este é só o início, que vão surpreender o campeonato.",
       "player"
     );
-    const social = p.attributes.Social;
-    const result = rollSkill(social, 8);
+
+    const social = p.attributes.Social ?? 1;
+    let baseSocial = social;
+
+    if (pers === "Showman confiante") {
+      baseSocial += 1; // mais à vontade a falar
+    } else if (pers === "Trabalhador silencioso") {
+      baseSocial -= 1; // menos confortável a discursar
+    }
+
+    const result = rollSkill(baseSocial, 8);
     if (result.outcome === "greatSuccess" || result.outcome === "success") {
       addStoryLine(
         "O balneário explode em gritos de motivação. O treinador parece satisfeito.",
@@ -930,12 +954,28 @@ function handlePreMatchChoice(option) {
       );
       p.morale += 10;
       p.form += 4;
+
+      if (pers === "Líder calmo") {
+        addStoryLine(
+          "Os colegas olham para ti como alguém que mantém a calma mesmo nos grandes momentos.",
+          "narrator"
+        );
+        p.morale += 2;
+      }
     } else {
       addStoryLine(
         "Alguns colegas sorriem, mas o discurso sai meio forçado. Nada de grave, mas também não inspirou muito.",
         "narrator"
       );
       p.morale += 1;
+
+      if (pers === "Showman confiante") {
+        addStoryLine(
+          "Ficas a pensar que, desta vez, as palavras não soaram tão naturais como costumas sentir.",
+          "narrator"
+        );
+        p.form -= 1;
+      }
     }
   } else if (option === "nervous") {
     addStoryLine(
@@ -944,6 +984,20 @@ function handlePreMatchChoice(option) {
     );
     p.morale -= 3;
     p.form -= 2;
+
+    if (pers === "Líder calmo") {
+      addStoryLine(
+        "Apesar dos nervos, a tua natureza mais calma ajuda-te a não entrar em pânico.",
+        "narrator"
+      );
+      p.morale += 2;
+    } else if (pers === "Trabalhador silencioso") {
+      addStoryLine(
+        "Sabes que, quando a bola rolar, o foco no trabalho em campo vai acabar por falar mais alto.",
+        "narrator"
+      );
+      p.form += 1;
+    }
   }
 
   clampPlayerStatus();
@@ -1692,13 +1746,19 @@ function handlePressChoice(option) {
   const att = p.attributes;
   const social = att.Social !== undefined ? att.Social : 1;
   const mental = att.Mental !== undefined ? att.Mental : 1;
+  const pers = p.personality || "";
 
   if (option === "humble") {
     addStoryLine(
       "Dizes que o mérito é da equipa e da forma como trabalharam juntos.",
       "player"
     );
-    const result = rollSkill(social + mental, 8);
+    let base = social + mental;
+    if (pers === "Trabalhador silencioso") {
+      base += 1; // este tipo de resposta é natural para ti
+    }
+
+    const result = rollSkill(base, 8);
     if (result.outcome === "greatSuccess" || result.outcome === "success") {
       addStoryLine(
         "A imprensa gosta da tua postura. Ganhas respeito no balneário e entre os adeptos.",
@@ -1706,6 +1766,14 @@ function handlePressChoice(option) {
       );
       p.morale += 4;
       p.form += 2;
+
+      if (pers === "Líder calmo") {
+        addStoryLine(
+          "A tua calma ao responder reforça a imagem de líder discreto da equipa.",
+          "narrator"
+        );
+        p.morale += 2;
+      }
     } else {
       addStoryLine(
         "A resposta passa um pouco ao lado, mas pelo menos não crias polémicas.",
@@ -1718,7 +1786,15 @@ function handlePressChoice(option) {
       "Assumes que estiveste bem e que és capaz de decidir jogos.",
       "player"
     );
-    const result = rollSkill(social + mental, 10);
+
+    let base = social + mental;
+    if (pers === "Showman confiante") {
+      base += 1; // confortável a assumir esse papel
+    } else if (pers === "Trabalhador silencioso") {
+      base -= 1; // não é a praia deste perfil
+    }
+
+    const result = rollSkill(base, 10);
     if (result.outcome === "greatSuccess") {
       addStoryLine(
         "As declarações soam a confiança e ambição saudável. A opinião pública fica curiosa contigo.",
@@ -1738,6 +1814,12 @@ function handlePressChoice(option) {
         "narrator"
       );
       p.morale -= 2;
+      if (pers === "Showman confiante") {
+        addStoryLine(
+          "Mesmo assim, no fundo acreditas que faz parte da tua maneira de ser falar alto.",
+          "narrator"
+        );
+      }
     } else {
       addStoryLine(
         "As tuas palavras caem mal. Manchetes falam em arrogância e ego.",
@@ -1751,7 +1833,13 @@ function handlePressChoice(option) {
       "Apontas o dedo ao árbitro, ao relvado e à falta de sorte.",
       "player"
     );
-    const result = rollSkill(mental, 9);
+
+    let base = mental;
+    if (pers === "Líder calmo") {
+      base -= 1; // não combina muito com o teu perfil
+    }
+
+    const result = rollSkill(base, 9);
     if (result.outcome === "greatSuccess") {
       addStoryLine(
         "Consegues explicar-te sem atacar ninguém diretamente. Alguns adeptos até concordam contigo.",
@@ -1771,6 +1859,13 @@ function handlePressChoice(option) {
       );
       p.morale -= 4;
       p.form -= 2;
+      if (pers === "Trabalhador silencioso") {
+        addStoryLine(
+          "Não te sentes confortável com a confusão criada. Preferias ter ficado calado.",
+          "narrator"
+        );
+        p.morale -= 1;
+      }
     }
   }
 
