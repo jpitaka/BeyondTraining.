@@ -2186,6 +2186,67 @@ function chooseRehab(option) {
   ]);
 }
 
+function getSeasonTitles() {
+  const titles = [];
+  const p = gameState.player;
+  const s = gameState.playerStats;
+  const gamesPlayed = getGamesPlayed();
+  const avg = getAverageRating();
+  const points = gameState.points;
+
+  if (!p || !s) return titles;
+
+  // Revelação jovem: boa média e ainda novo
+  if (
+    gamesPlayed >= 3 &&
+    avg !== null &&
+    avg >= 7.5 &&
+    p.age != null &&
+    p.age <= 19
+  ) {
+    titles.push("Jogador Revelação");
+  }
+
+  // Especialistas por posição
+  if (p.positionKey === "Forward" && s.goals >= 4) {
+    titles.push("Matador da Área");
+  }
+
+  if (p.positionKey === "Midfielder" && s.assists >= 4) {
+    titles.push("Maestro do Meio-Campo");
+  }
+
+  if (p.positionKey === "Goalkeeper" && s.cleanSheets >= 3) {
+    titles.push("Muralha da Baliza");
+  }
+
+  // Pilar da equipa: muitos minutos e impacto geral
+  if (
+    gamesPlayed >= 4 &&
+    avg !== null &&
+    avg >= 7.0 &&
+    points >= gamesPlayed * 2
+  ) {
+    titles.push("Pilar da Equipa");
+  }
+
+  // Perfil de líder
+  if (
+    p.personality === "Líder calmo" &&
+    gamesPlayed >= 3 &&
+    (p.morale ?? 0) >= 70
+  ) {
+    titles.push("Capitão Sem Braçadeira");
+  }
+
+  // Se nada encaixar, pelo menos marca como época de aprendizagem
+  if (titles.length === 0) {
+    titles.push("Época de Aprendizagem");
+  }
+
+  return titles;
+}
+
 function endSeason() {
   const gamesPlayed = getGamesPlayed();
 
@@ -2222,6 +2283,15 @@ function endSeason() {
         `${status}: ${obj.text} (progresso: ${obj.progress})`,
         "system"
       );
+    });
+  }
+
+  // Títulos de época com base no desempenho
+  const titles = getSeasonTitles();
+  if (titles.length > 0) {
+    addStoryLine("Resumo da tua reputação nesta época:", "system");
+    titles.forEach((t) => {
+      addStoryLine(`• ${t}`, "system");
     });
   }
 
