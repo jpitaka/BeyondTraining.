@@ -124,6 +124,7 @@ const infoStamina = document.getElementById("info-stamina");
 const infoMorale = document.getElementById("info-morale");
 const infoForm = document.getElementById("info-form");
 const infoInjury = document.getElementById("info-injury");
+const infoInjuryRisk = document.getElementById("info-injury-risk");
 
 const helpPanel = document.getElementById("help-panel");
 const toggleHelpBtn = document.getElementById("toggle-help");
@@ -137,6 +138,7 @@ if (toggleHelpBtn && helpPanel) {
 const barStamina = document.getElementById("bar-stamina");
 const barMorale = document.getElementById("bar-morale");
 const barForm = document.getElementById("bar-form");
+const barInjuryRisk = document.getElementById("bar-injury-risk");
 
 const seasonMatchEl = document.getElementById("season-match");
 const seasonRecordEl = document.getElementById("season-record");
@@ -225,9 +227,17 @@ function updateStatus() {
     infoFoot.textContent = p.foot || "—";
     infoPersonality.textContent = p.personality || "—";
 
+    // risco de lesão default se faltar
+    if (p.injuryRisk === undefined || p.injuryRisk === null) {
+      p.injuryRisk = 25;
+    }
+
     infoStamina.textContent = `${p.stamina}`;
     infoMorale.textContent = `${p.morale}`;
     infoForm.textContent = `${p.form}`;
+    if (infoInjuryRisk) {
+      infoInjuryRisk.textContent = `${p.injuryRisk}`;
+    }
   }
 
   scorePlayerEl.textContent = gameState.scorePlayer;
@@ -253,6 +263,10 @@ function updateStatusBars() {
   }
   if (barForm) {
     barForm.style.width = `${p.form}%`;
+  }
+  if (barInjuryRisk) {
+    const risk = Math.max(0, Math.min(100, p.injuryRisk ?? 25));
+    barInjuryRisk.style.width = `${risk}%`;
   }
 }
 
@@ -454,6 +468,11 @@ function clampPlayerStatus() {
   p.stamina = Math.max(0, Math.min(100, p.stamina));
   p.morale = Math.max(0, Math.min(100, p.morale));
   p.form = Math.max(0, Math.min(100, p.form));
+
+  if (p.injuryRisk === undefined || p.injuryRisk === null) {
+    p.injuryRisk = 25;
+  }
+  p.injuryRisk = Math.max(0, Math.min(100, p.injuryRisk));
 }
 
 function applyAttributeGrowth(finalRating) {
@@ -569,6 +588,10 @@ function loadGame() {
     }
 
     gameState.player = data.player;
+    const p = gameState.player;
+    if (p && (p.injuryRisk === undefined || p.injuryRisk === null)) {
+      p.injuryRisk = 25;
+    }
 
     if (data.career) {
       gameState.seasonNumber = data.career.seasonNumber ?? 1;
@@ -692,6 +715,8 @@ function startNewSeason() {
   p.stamina = 80;
   p.morale = Math.max(p.morale, 60);
   p.form = Math.max(p.form, 55);
+    // risco de lesão baixa um bocado com a pré-época e trabalho estruturado
+  p.injuryRisk = Math.max(10, (p.injuryRisk ?? 25) - 15);
 
   clampPlayerStatus();
   clearStory();
@@ -790,7 +815,8 @@ startGameBtn.addEventListener("click", () => {
     attributes: baseAttributes,
     stamina: 100,
     morale: 60,
-    form: 50
+    form: 50,
+    injuryRisk: 25
   };
 
   gameState.seasonNumber = 1;
@@ -1400,21 +1426,35 @@ function handleHighlight2(action) {
       p.morale -= 5;
       p.form -= 5;
     } else {
-        addStoryLine(
+      addStoryLine(
         "Sentes uma fisgada na perna a meio do sprint e tens de abrandar. Parece uma lesão mais séria.",
         "narrator"
-        );
-        p.morale -= 10;
-        p.form -= 10;
+      );
+      p.morale -= 10;
+      p.form -= 10;
 
-        const gamesOut = 1 + Math.floor(Math.random() * 3); // 1 a 3 jogos
-        gameState.injury.isInjured = true;
-        gameState.injury.gamesToMiss = gamesOut;
+      const risk = Math.max(0, Math.min(100, p.injuryRisk ?? 25));
 
-        addStoryLine(
+      let extraGames = 0;
+      if (risk >= 70) {
+        extraGames = 2;
+      } else if (risk >= 40) {
+        extraGames = 1;
+      }
+
+      let gamesOut = 1 + Math.floor(Math.random() * 3) + extraGames; // base 1–3 + extra
+      if (gamesOut > 5) gamesOut = 5;
+
+      gameState.injury.isInjured = true;
+      gameState.injury.gamesToMiss = gamesOut;
+
+      // depois da lesão, o risco desce um pouco (mais cuidado e trabalho de prevenção)
+      p.injuryRisk = Math.max(10, risk - 20);
+
+      addStoryLine(
         `O departamento médico indica que vais falhar aproximadamente ${gamesOut} jogo(s).`,
         "system"
-        );
+      );
     }
   } else {
     addStoryLine(
@@ -2021,6 +2061,7 @@ function chooseBetweenMatches(option) {
     att.Fisico += 1;
     p.stamina -= 10;
     p.morale += 1;
+    p.injuryRisk += 8; // carga física aumenta risco
   } else if (option === "technical") {
     addStoryLine(
       "Dedicas-te a treinar técnica: receção, passe, remate, jogadas combinadas.",
@@ -2029,6 +2070,7 @@ function chooseBetweenMatches(option) {
     att.Tecnica += 1;
     p.stamina -= 10;
     p.form += 2;
+    p.injuryRisk += 4; // carga moderada
   } else if (option === "rest") {
     addStoryLine(
       "Aproveitas para descansar o corpo e a cabeça, dormir bem e desligar um pouco.",
@@ -2036,6 +2078,7 @@ function chooseBetweenMatches(option) {
     );
     p.stamina += 20;
     p.morale += 3;
+    p.injuryRisk -= 10; // descanso reduz risco
   }
 
   clampPlayerStatus();
@@ -2196,6 +2239,8 @@ function chooseRehab(option) {
     p.stamina -= 10;
     p.form -= 2;
 
+    p.injuryRisk += 5; // plano duro, mais carga no corpo
+
     if (inj.gamesToMiss > 1) {
       inj.gamesToMiss -= 1;
       addStoryLine(
@@ -2217,6 +2262,9 @@ function chooseRehab(option) {
     p.stamina -= 3;
     p.form += 1;
 
+    // risco mantém-se mais estável ou desce ligeiramente
+    p.injuryRisk -= 2;
+
     if (inj.gamesToMiss > 2) {
       inj.gamesToMiss -= 1;
       addStoryLine(
@@ -2236,6 +2284,7 @@ function chooseRehab(option) {
     );
     p.stamina += 10;
     p.morale += 3;
+    p.injuryRisk -= 8; // descanso ajuda o corpo a recuperar
     addStoryLine(
       "Fisicamente podes demorar o tempo previsto a voltar, mas mentalmente sentes-te mais estável.",
       "narrator"
