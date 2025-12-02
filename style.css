@@ -1,3 +1,4 @@
+/* Tema escuro e layout geral para o mini-jogo de carreira */
 * {
   box-sizing: border-box;
 }
@@ -195,6 +196,7 @@ main#game {
 }
 
 .status-bar {
+  /* Barra base usada para stamina/moral/forma/risco */
   flex: 1;
   height: 8px;
   background: #2b2b2b;
@@ -204,6 +206,7 @@ main#game {
 }
 
 .status-bar-fill {
+  /* Preenchimento com gradiente vermelho->verde consoante valor */
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, #ff4d4d, #ffd24d, #4caf50);

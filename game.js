@@ -1,3 +1,5 @@
+// Núcleo do mini-jogo de carreira: cria personagem, joga partidas por destaques,
+// gere moral/formação/lesões e guarda progresso em localStorage.
 // ============================
 // Configuração base
 // ============================
@@ -166,10 +168,12 @@ const choicesContainer = document.getElementById("choices");
 // ============================
 
 function getGamesPlayed() {
+  // Soma vitórias/empates/derrotas para saber quantos jogos já decorreram
   return gameState.wins + gameState.draws + gameState.losses;
 }
 
 function getCurrentFixture() {
+  // Devolve o adversário do jogo atual com base no número de partidas disputadas
   const gamesPlayed = getGamesPlayed();
   const index = Math.min(gamesPlayed, fixtures.length - 1);
   return fixtures[index];
@@ -180,6 +184,7 @@ function getCurrentFixture() {
 // ============================
 
 function initGameUI() {
+  // Esconde o ecrã de criação e popula o painel principal com os dados do jogador
   characterCreationSection.classList.add("hidden");
   gameSection.classList.remove("hidden");
 
@@ -198,6 +203,7 @@ function initGameUI() {
 }
 
 function updateSeasonUI() {
+  // Atualiza painel de época (jogo atual, registo, pontos, adversário, número da época)
   const gamesPlayed = getGamesPlayed();
   const currentMatchNumber = Math.min(gamesPlayed + 1, gameState.totalMatches);
 
@@ -219,6 +225,7 @@ function updateSeasonUI() {
 
 // Atualizar estado (stamina, moral, forma, resultado, minuto)
 function updateStatus() {
+  // Recalcula texto e barras de UI com info atual de jogador, marcador e minuto
   const p = gameState.player;
   if (p) {
     infoName.textContent = p.name || "";
@@ -255,6 +262,7 @@ function updateStatusBars() {
   const p = gameState.player;
   if (!p) return;
 
+  // Barras horizontais para valores percentuais de stamina/moral/forma/risco de lesão
   if (barStamina) {
     barStamina.style.width = `${p.stamina}%`;
   }
@@ -271,6 +279,7 @@ function updateStatusBars() {
 }
 
 function updateStatsUI() {
+  // Atualiza contadores de jogos/golos/assistências/balizas invioladas e notas
   const s = gameState.playerStats;
   statGamesEl.textContent = s.games;
   statGoalsEl.textContent = s.goals;
@@ -294,6 +303,7 @@ function updateStatsUI() {
 }
 
 function getAverageRating() {
+  // Média das notas acumuladas, ou null se ainda não há base para cálculo
   const s = gameState.playerStats;
   if (!s || !s.games || s.games === 0) return null;
   if (!s.ratingSum || s.ratingSum <= 0) return null;
@@ -372,6 +382,7 @@ function getSeasonObjectivesForCurrentPlayer() {
 }
 
 function updateObjectivesUI() {
+  // Preenche a lista de objetivos da época, marcando os já concluídos
   if (!seasonObjectivesEl) return;
 
   const objectives = getSeasonObjectivesForCurrentPlayer();
@@ -405,6 +416,7 @@ function updateObjectivesUI() {
 }
 
 function updateInjuryUI() {
+  // Mostra "Apto" ou quantos jogos o jogador ainda ficará de fora
   if (!infoInjury) return;
 
   const inj = gameState.injury;
@@ -417,10 +429,12 @@ function updateInjuryUI() {
 }
 
 function clearStory() {
+  // Limpa o feed de narrativa
   storyLog.innerHTML = "";
 }
 
 function addStoryLine(text, type = "narrator") {
+  // Adiciona uma nova linha de narrativa ao log e faz scroll para o fim
   const div = document.createElement("div");
   div.classList.add("story-entry", type);
   div.textContent = text;
@@ -429,6 +443,7 @@ function addStoryLine(text, type = "narrator") {
 }
 
 function setChoices(choices) {
+  // Constrói o grupo de botões de escolha para a decisão atual
   choicesContainer.innerHTML = "";
   choices.forEach((choice) => {
     const btn = document.createElement("button");
@@ -448,6 +463,7 @@ function setChoices(choices) {
 // ============================
 
 function rollSkill(baseValue, difficulty) {
+  // Simula um d12 ajustado ao adversário; devolve outcome e valores usados
   const roll = Math.floor(Math.random() * 12) + 1; // 1-12
   const fixture = getCurrentFixture();
   const difficultyMod = fixture ? fixture.difficulty : 0;
@@ -462,6 +478,7 @@ function rollSkill(baseValue, difficulty) {
 }
 
 function clampPlayerStatus() {
+  // Garante que stamina/moral/forma/risco se mantêm dentro de 0-100
   const p = gameState.player;
   if (!p) return;
 
@@ -476,6 +493,7 @@ function clampPlayerStatus() {
 }
 
 function applyAttributeGrowth(finalRating) {
+  // Aumenta atributos após jogo bom (>=8), escolhendo pool relevante à posição
   const p = gameState.player;
   if (!p || !p.attributes) return [];
 
@@ -524,6 +542,7 @@ function applyAttributeGrowth(finalRating) {
 }
 
 function applyRatingChange(delta) {
+  // Ajusta nota corrente do jogo com limites 1–10
   if (gameState.currentRating == null) {
     gameState.currentRating = 6; // base neutra
   }
@@ -534,6 +553,7 @@ function applyRatingChange(delta) {
 }
 
 function applyRatingFromOutcome(outcome) {
+  // Traduz um outcome (greatSuccess, etc.) em variação de nota do jogo
   if (outcome === "greatSuccess") {
     applyRatingChange(1.0);
   } else if (outcome === "success") {
@@ -550,6 +570,7 @@ function applyRatingFromOutcome(outcome) {
 // ============================
 
 function saveGame() {
+  // Persiste estado principal (jogador, época, stats, lesão, flags) no localStorage
   if (!gameState.player) return;
 
   const data = {
@@ -575,6 +596,7 @@ function saveGame() {
 }
 
 function loadGame() {
+  // Recupera dados do localStorage e repõe defaults em falta; devolve sucesso/falha
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) {
@@ -660,6 +682,7 @@ function loadGame() {
 }
 
 function checkForSavedGame() {
+  // Se existir save no storage, mostra botão de continuar carreira
   const raw = localStorage.getItem(SAVE_KEY);
   if (raw) {
     continueCareerBtn.classList.remove("hidden");
@@ -667,11 +690,13 @@ function checkForSavedGame() {
 }
 
 function newCareer() {
+  // Limpa save atual e recarrega a página para recomeçar
   localStorage.removeItem(SAVE_KEY);
   window.location.reload();
 }
 
 function startNewSeason() {
+  // Reinicia estatísticas e estado para uma nova época mantendo o jogador
   const p = gameState.player;
   if (!p) return;
 
@@ -746,6 +771,7 @@ function startNewSeason() {
 // ============================
 
 startGameBtn.addEventListener("click", () => {
+  // Valida inputs de criação, aplica preset da posição e inicia a carreira
   const name = playerNameInput.value.trim();
   const positionKey = playerPositionSelect.value;
   const ageRaw = playerAgeInput.value.trim();
@@ -854,6 +880,7 @@ startGameBtn.addEventListener("click", () => {
 });
 
 continueCareerBtn.addEventListener("click", () => {
+  // Carrega save existente e salta direto para o pré-jogo
   const ok = loadGame();
   if (!ok) return;
   initGameUI();
@@ -865,6 +892,7 @@ continueCareerBtn.addEventListener("click", () => {
 // ============================
 
 function startPreMatch() {
+  // Configura novo jogo; se estiver lesionado, simula a partida automaticamente
   // se estiver lesionado e ainda tiver jogos para falhar, simula um jogo sem te meter em campo
   const inj = gameState.injury;
   if (inj && inj.isInjured && inj.gamesToMiss > 0) {
@@ -922,6 +950,7 @@ function startPreMatch() {
 }
 
 function handleInjuredMatch() {
+  // Simula resultado quando o jogador está lesionado e reduz contagem de jogos de fora
   gameState.phase = "postMatch";
   clearStory();
 
@@ -1012,6 +1041,7 @@ function handleInjuredMatch() {
 }
 
 function handlePreMatchChoice(option) {
+  // Resolve impacto das escolhas de balneário antes de começar o jogo
   const p = gameState.player;
   const pers = p.personality || "";
 
@@ -1115,6 +1145,7 @@ function handlePreMatchChoice(option) {
 // ============================
 
 function startMatch() {
+  // Marca início do jogo e avança para o primeiro destaque
   gameState.phase = "matchHighlight";
   gameState.highlightIndex = 0;
   gameState.minute = 5;
@@ -1129,6 +1160,7 @@ function startMatch() {
 }
 
 function proceedHighlight() {
+  // Mostra o destaque atual (3 por jogo) e apresenta escolhas conforme posição
   const p = gameState.player;
   const index = gameState.highlightIndex;
 
@@ -1235,6 +1267,7 @@ function proceedHighlight() {
 }
 
 function handleHighlight0(action) {
+  // Resolve primeiro destaque (minuto ~18), contextualizado pela posição
   const p = gameState.player;
   const att = p.attributes;
 
@@ -1312,6 +1345,7 @@ function handleHighlight0(action) {
 }
 
 function handleHighlight1(action) {
+  // Resolve segundo destaque (minuto ~55), focado em assumir ou jogar simples
   const p = gameState.player;
   const att = p.attributes;
 
@@ -1389,6 +1423,7 @@ function handleHighlight1(action) {
 }
 
 function handleHighlight2(action) {
+  // Resolve terceiro destaque (minuto ~82), decidindo entre arriscar tudo ou gerir esforço
   const p = gameState.player;
   const att = p.attributes;
 
@@ -1492,6 +1527,7 @@ function handleHighlight2(action) {
 // ============================
 
 function resolveAttackResult(result) {
+  // Interpretar roll do avançado quando tenta drible final
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
 
@@ -1531,6 +1567,7 @@ function resolveAttackResult(result) {
 }
 
 function resolveBuildUpResult(result) {
+  // Interpretar roll de segurar/jogar simples no primeiro destaque
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
   if (result.outcome === "greatSuccess" || result.outcome === "success") {
@@ -1552,6 +1589,7 @@ function resolveBuildUpResult(result) {
 }
 
 function resolveSwitchPlay(result) {
+  // Interpreta o passe longo do médio para mudar flanco
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
 
@@ -1580,6 +1618,7 @@ function resolveSwitchPlay(result) {
 }
 
 function resolveThroughBall(result) {
+  // Interpreta tentativa de passe em profundidade do médio
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
 
@@ -1610,6 +1649,7 @@ function resolveThroughBall(result) {
 }
 
 function resolveDefensiveDuel(result) {
+  // Interpreta desarme direto do defesa no 1º destaque
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
 
@@ -1646,6 +1686,7 @@ function resolveDefensiveDuel(result) {
 }
 
 function resolveDelay(result) {
+  // Interpreta decisão do defesa de temporizar/fechar espaço
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
 
@@ -1668,6 +1709,7 @@ function resolveDelay(result) {
 }
 
 function resolveCrossClaim(result) {
+  // Interpreta saída do GR a um cruzamento tenso
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
 
@@ -1704,6 +1746,7 @@ function resolveCrossClaim(result) {
 }
 
 function resolveShotReaction(result) {
+  // Interpreta reação do GR a remate/cabeceamento dentro da área
   const p = gameState.player;
   applyRatingFromOutcome(result.outcome);
 
@@ -1744,6 +1787,7 @@ function resolveShotReaction(result) {
 // ============================
 
 function endMatch() {
+  // Fecha o jogo, aplica impacto no resultado, calcula nota final e inicia pós-jogo
   gameState.phase = "postMatch";
   gameState.minute = 90;
 
@@ -1827,6 +1871,7 @@ function endMatch() {
 }
 
 function postMatchPress() {
+  // Apresenta entrevista pós-jogo com 3 estilos de resposta
   const gamesPlayed = getGamesPlayed();
   const remaining = Math.max(gameState.totalMatches - gamesPlayed, 0);
 
@@ -1861,6 +1906,7 @@ function postMatchPress() {
 }
 
 function handlePressChoice(option) {
+  // Resolve consequências narrativas e estatísticas da resposta escolhida na entrevista
   const p = gameState.player;
   const att = p.attributes;
   const social = att.Social !== undefined ? att.Social : 1;
@@ -2011,6 +2057,7 @@ function handlePressChoice(option) {
 }
 
 function betweenMatches() {
+  // Menu intermédio entre jogos: reabilitação se lesionado ou eventos de treino/transferência
   gameState.phase = "betweenMatches";
   clearStory();
 
@@ -2050,6 +2097,7 @@ function betweenMatches() {
 }
 
 function chooseBetweenMatches(option) {
+  // Aplica efeitos dos 3 tipos de treino/descanso entre jogos
   const p = gameState.player;
   const att = p.attributes;
 
@@ -2104,6 +2152,7 @@ function chooseBetweenMatches(option) {
 }
 
 function showBetweenMatchesTrainingMenu() {
+  // Mostra escolhas de treino/descanso quando o jogador está apto
   const gamesPlayed = getGamesPlayed();
   const nextMatchNumber = gamesPlayed + 1;
 
@@ -2130,6 +2179,7 @@ function showBetweenMatchesTrainingMenu() {
 }
 
 function maybeTriggerTransferEvent() {
+  // Verifica se a época está boa o suficiente para disparar um evento de interesse de outros clubes
   const p = gameState.player;
   const s = gameState.playerStats;
   const flags = gameState.flags || {};
@@ -2189,6 +2239,7 @@ function maybeTriggerTransferEvent() {
 }
 
 function resolveTransferChoice(option) {
+  // Ajusta moral/forma/atributos consoante a abordagem ao interesse de transferências
   const p = gameState.player;
   const att = p.attributes;
 
@@ -2222,6 +2273,7 @@ function resolveTransferChoice(option) {
 }
 
 function chooseRehab(option) {
+  // Lida com as 3 abordagens de recuperação quando o jogador está lesionado
   const p = gameState.player;
   const inj = gameState.injury;
 
@@ -2315,6 +2367,7 @@ function chooseRehab(option) {
 }
 
 function getSeasonTitles() {
+  // Gera títulos/resumos de reputação com base nas estatísticas atuais
   const titles = [];
   const p = gameState.player;
   const s = gameState.playerStats;
@@ -2376,6 +2429,7 @@ function getSeasonTitles() {
 }
 
 function endSeason() {
+  // Fecha época, mostra resumo de objetivos/títulos e oferece opções para continuar ou recomeçar
   const gamesPlayed = getGamesPlayed();
 
   addStoryLine(
